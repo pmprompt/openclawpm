@@ -73,7 +73,7 @@ sprite exec bash -lc "set -euo pipefail
 
     # Common Sprite nvm bin path (from installer warning)
     if [[ -d '/.sprite/languages/node/nvm/versions/node/v22.20.0/bin' ]]; then
-      export PATH="/.sprite/languages/node/nvm/versions/node/v22.20.0/bin:$PATH"
+      export PATH="/.sprite/languages/node/nvm/versions/node/v22.20.0/bin:\$PATH"
     fi
 
     export PATH=\"\$HOME/.local/bin:\$PATH\"
