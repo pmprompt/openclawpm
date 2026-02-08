@@ -31,14 +31,14 @@ class EnvPreflight
             throw new \RuntimeException('Missing dependency: sprite');
         }
 
-        Prompt::info('Installing Sprites CLI...');
+        \Laravel\Prompts\info('Installing Sprites CLI...');
         $installCode = 0;
         passthru('curl -fsSL https://sprites.dev/install.sh | sh', $installCode);
         if ($installCode !== 0) {
             throw new \RuntimeException('Failed to install Sprites CLI. See output above.');
         }
 
-        Prompt::info('Installed. Ensure ~/.local/bin is on your PATH, then re-run this command.');
+        \Laravel\Prompts\info('Installed. Ensure ~/.local/bin is on your PATH, then re-run this command.');
         throw new \RuntimeException('Sprites CLI installed; restart shell and run again.');
     }
 
