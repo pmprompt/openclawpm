@@ -190,19 +190,27 @@ openclaw gateway status || true
 EOS
 )"
 
-# Run the bootstrap script inside the sprite
+# Run the bootstrap script inside the sprite.
+# We avoid quoting issues by writing a small env file (KEY=VALUE) then executing.
 sprite exec bash -lc "set -euo pipefail
   echo '$BOOT_SCRIPT_B64' | base64 -d > /tmp/openclawpm_bootstrap.sh
   chmod +x /tmp/openclawpm_bootstrap.sh
 
-  OPENCLAW_GATEWAY_TOKEN='${OPENCLAW_GATEWAY_TOKEN}' \
-  SYS_PROMPT_B64='${SYS_PROMPT_B64}' \
-  PM_SKILLS_REPO_B64='${PM_SKILLS_REPO_B64}' \
-  PM_SKILLS_REF_B64='${PM_SKILLS_REF_B64}' \
-  OPENCLAW_MODEL_PRIMARY_B64='${OPENCLAW_MODEL_PRIMARY_B64}' \
-  OPENAI_API_KEY_B64='${OPENAI_API_KEY_B64}' \
-  ANTHROPIC_API_KEY_B64='${ANTHROPIC_API_KEY_B64}' \
-  OPENROUTER_API_KEY_B64='${OPENROUTER_API_KEY_B64}' \
+  cat > /tmp/openclawpm_env <<'EOF'
+OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+SYS_PROMPT_B64=${SYS_PROMPT_B64}
+PM_SKILLS_REPO_B64=${PM_SKILLS_REPO_B64}
+PM_SKILLS_REF_B64=${PM_SKILLS_REF_B64}
+OPENCLAW_MODEL_PRIMARY_B64=${OPENCLAW_MODEL_PRIMARY_B64}
+OPENAI_API_KEY_B64=${OPENAI_API_KEY_B64}
+ANTHROPIC_API_KEY_B64=${ANTHROPIC_API_KEY_B64}
+OPENROUTER_API_KEY_B64=${OPENROUTER_API_KEY_B64}
+EOF
+
+  set -a
+  source /tmp/openclawpm_env
+  set +a
+
   bash /tmp/openclawpm_bootstrap.sh
 "
 
