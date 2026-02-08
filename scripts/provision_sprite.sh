@@ -35,8 +35,10 @@ if [[ -n "${OPENAI_API_KEY:-}" ]]; then
   AUTH_ARGS+=(--auth-choice openai-api-key --openai-api-key "${OPENAI_API_KEY}")
 elif [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
   AUTH_ARGS+=(--auth-choice anthropic-api-key --anthropic-api-key "${ANTHROPIC_API_KEY}")
+elif [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
+  AUTH_ARGS+=(--auth-choice openrouter-api-key --openrouter-api-key "${OPENROUTER_API_KEY}")
 else
-  echo "Missing OPENAI_API_KEY or ANTHROPIC_API_KEY (set one)." >&2
+  echo "Missing OPENAI_API_KEY or ANTHROPIC_API_KEY or OPENROUTER_API_KEY (set one)." >&2
   exit 1
 fi
 
