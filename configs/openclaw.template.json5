@@ -1,0 +1,22 @@
+// openclaw.template.json5
+//
+// NOTE: This is a TEMPLATE. Do not commit real tokens/keys.
+// Replace placeholders at provision time.
+
+{
+  gateway: {
+    // Keep local; do not expose the admin Control UI publicly.
+    bind: "loopback",
+    port: 18789,
+    auth: {
+      mode: "token",
+      token: "__OPENCLAW_GATEWAY_TOKEN__",
+    },
+  },
+
+  // TODO: fill in providers (Anthropic/OpenAI) for MVP runs
+  // providers: { ... }
+
+  // TODO: configure a Telegram channel for prototype chat
+  // channels: { telegram: { enabled: true, token: "__TELEGRAM_BOT_TOKEN__", allowFrom: ["__CHAT_ID__"] } }
+}
