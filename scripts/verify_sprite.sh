@@ -36,8 +36,11 @@ hash -r
 command -v openclaw
 openclaw --version
 
-echo "[2/4] Checking gateway health (best-effort)"
-openclaw gateway health || openclaw gateway status || true
+echo "[2/4] Checking gateway health (best-effort; may fail on Sprites)"
+# Sprites doesn't provide systemd user services, so gateway service probing can fail.
+# Keep this non-blocking and time-bounded.
+(timeout 5s openclaw gateway health || true) >/tmp/openclawpm_gateway_check.txt 2>&1 || true
+(tail -n 40 /tmp/openclawpm_gateway_check.txt || true)
 
 echo "[3/4] Checking pmprompt skills are discoverable"
 WS="$(openclaw config get agents.defaults.workspace)"
