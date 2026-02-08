@@ -54,7 +54,15 @@ fi
 
 # Create config + workspace inside the Sprite
 sprite exec bash -lc "set -euo pipefail
-  command -v openclaw >/dev/null || (echo 'openclaw not found in sprite PATH' >&2; exit 1)
+  if ! command -v openclaw >/dev/null 2>&1; then
+    echo '[openclawpm] Installing OpenClaw (skip onboard)...'
+    curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard
+    # Ensure PATH picks up global npm prefix used by installer
+    export PATH=\"$HOME/.npm-global/bin:$HOME/.local/bin:$PATH\"
+  fi
+
+  command -v openclaw >/dev/null || (echo 'openclaw still not found after install' >&2; exit 1)
+  openclaw --version
 
   openclaw onboard \
     --non-interactive --accept-risk \
