@@ -15,7 +15,23 @@ This repo will contain scripts to:
 
 - No secrets. Do **not** commit API keys, cookies, tokens, chat IDs, private URLs.
 
-## Quickstart (stub)
+## Quickstart
+
+### CLI (Laravel Zero)
+
+From `cli/`:
+
+```bash
+composer install
+./openclawpm list
+./openclawpm provision pm-agent-test
+./openclawpm verify pm-agent-test
+./openclawpm destroy pm-agent-test
+```
+
+### Scripts (direct)
+
+
 
 1) Install Sprites CLI (see docs): https://docs.sprites.dev/quickstart/
 2) Authenticate with Fly/Sprites.
