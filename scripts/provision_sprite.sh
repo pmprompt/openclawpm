@@ -45,7 +45,8 @@ fi
 PM_SKILLS_REPO="${PM_SKILLS_REPO:-git@github.com:pmprompt/claude-plugin-product-management.git}"
 PM_SKILLS_REF="${PM_SKILLS_REF:-main}"
 
-SYS_PROMPT_B64="$(base64 -w0 "$(dirname "$0")/../prompts/system-prompt-pm.txt")"
+# base64 portability: GNU uses -w; BSD/macOS does not. Use tr to strip newlines.
+SYS_PROMPT_B64="$(base64 < "$(dirname "$0")/../prompts/system-prompt-pm.txt" | tr -d '\n')"
 
 echo "[1/6] Creating sprite: $NAME"
 # Create sprite (if it already exists, reuse it)
@@ -57,7 +58,7 @@ sprite use "$NAME"
 echo "[2/6] Bootstrapping OpenClaw + skills inside the Sprite"
 
 # Build a single in-sprite bootstrap script and run it to avoid fragile quote-escaping.
-BOOT_SCRIPT_B64="$(base64 -w0 <<'EOS'
+BOOT_SCRIPT_B64="$(base64 <<'EOS' | tr -d '\n'
 #!/usr/bin/env bash
 set -euo pipefail
 
