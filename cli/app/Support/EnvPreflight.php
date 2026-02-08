@@ -115,13 +115,22 @@ class EnvPreflight
         return $env;
     }
 
-    public static function ensureSpriteCliAuthenticated(): void
+    public static function ensureSpriteCliAuthenticated(bool $interactive = true): void
     {
-        // Cheap check: sprite list
+        // Sprites may need a one-time org selection to mint a token.
+        // If we suppress output, it looks like a hang. So we run interactively by default.
+        $cmd = $interactive ? 'sprite list' : 'sprite list >/dev/null 2>&1';
+
         $code = 0;
-        @passthru('sprite list >/dev/null 2>&1', $code);
+        if ($interactive) {
+            \Laravel\Prompts\info('Checking Sprites auth (you may be prompted to pick an org once)...');
+            passthru($cmd, $code);
+        } else {
+            @passthru($cmd, $code);
+        }
+
         if ($code !== 0) {
-            Prompt::error('Sprites CLI is not authenticated. Run: sprite org auth');
+            Prompt::error("Sprites CLI isn't authenticated yet. Run:\n  sprite org auth\nThen run:\n  sprite list");
             throw new \RuntimeException('Sprites CLI not authenticated');
         }
     }

@@ -34,7 +34,7 @@ class ProvisionSprite extends Command
 
         // Preflight: local deps + prompts for missing env vars.
         \App\Support\EnvPreflight::ensureSpriteCliInstalled(fix: true);
-        \App\Support\EnvPreflight::ensureSpriteCliAuthenticated();
+        \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true);
         $env = \App\Support\EnvPreflight::forProvisioning($repoRoot);
 
         $exports = '';
