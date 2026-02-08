@@ -62,10 +62,10 @@ sprite exec bash -lc "set -euo pipefail
     curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard
     # Ensure PATH picks up npm global prefix used by installer (Sprites uses nvm).
     NPM_PREFIX=\"$(npm config get prefix 2>/dev/null || true)\"
-    if [[ -n \"$NPM_PREFIX\" && -d \"$NPM_PREFIX/bin\" ]]; then
-      export PATH=\"$NPM_PREFIX/bin:$PATH\"
+    if [[ -n \"\\$NPM_PREFIX\" && -d \"\\$NPM_PREFIX/bin\" ]]; then
+      export PATH=\"\\$NPM_PREFIX/bin:\\$PATH\"
     fi
-    export PATH=\"$HOME/.local/bin:$PATH\"
+    export PATH=\"\\$HOME/.local/bin:\\$PATH\"
   fi
 
   command -v openclaw >/dev/null || (echo 'openclaw still not found after install' >&2; exit 1)
