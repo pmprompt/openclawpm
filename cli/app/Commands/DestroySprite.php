@@ -29,6 +29,8 @@ class DestroySprite extends Command
     {
         $name = (string) $this->argument('name');
 
+        \App\Support\EnvPreflight::ensureSpriteCliAuthenticated();
+
         $cmd = sprintf('bash ../scripts/destroy_sprite.sh --name %s', escapeshellarg($name));
         $this->info("Running: $cmd");
         passthru($cmd, $code);

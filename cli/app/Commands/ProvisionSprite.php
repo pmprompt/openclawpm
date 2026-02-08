@@ -30,7 +30,19 @@ class ProvisionSprite extends Command
     {
         $name = (string) $this->argument('name');
 
-        $cmd = sprintf('bash ../scripts/provision_sprite.sh --name %s', escapeshellarg($name));
+        $repoRoot = realpath(__DIR__.'/../../..');
+
+        // Preflight prompts for missing env vars and ensures sprite CLI auth.
+        $env = \App\Support\EnvPreflight::forProvisioning($repoRoot);
+        \App\Support\EnvPreflight::ensureSpriteCliAuthenticated();
+
+        $exports = '';
+        foreach ($env as $k => $v) {
+            if ($v === null || $v === '') continue;
+            $exports .= $k.'='.escapeshellarg((string) $v).' ';
+        }
+
+        $cmd = $exports . sprintf('bash ../scripts/provision_sprite.sh --name %s', escapeshellarg($name));
         $this->info("Running: $cmd");
         passthru($cmd, $code);
 

@@ -29,6 +29,9 @@ class VerifySprite extends Command
     {
         $name = (string) $this->argument('name');
 
+        // Ensure sprite CLI is authenticated (no prompts needed).
+        \App\Support\EnvPreflight::ensureSpriteCliAuthenticated();
+
         $cmd = sprintf('bash ../scripts/verify_sprite.sh --name %s', escapeshellarg($name));
         $this->info("Running: $cmd");
         passthru($cmd, $code);
