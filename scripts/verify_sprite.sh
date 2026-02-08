@@ -21,11 +21,22 @@ fi
 echo "Verifying sprite: $NAME"
 
 echo "[1/4] Checking OpenClaw is installed"
-sprite exec -s "$NAME" bash -lc "command -v openclaw && openclaw --version"
-
-echo "[2/4] Checking gateway health"
-# Status may fail if service isn't installed; probe gateway health via local call.
-sprite exec -s "$NAME" bash -lc "openclaw gateway health || openclaw gateway status || true"
+# OpenClaw may be installed via npm global bin that isn't on PATH in fresh shells.
+sprite exec -s "$NAME" bash -lc "set -euo pipefail
+  NPM_BIN=\"$(npm bin -g 2>/dev/null || true)\"
+  NPM_PREFIX=\"$(npm config get prefix 2>/dev/null || true)\"
+  if [[ -n \"$NPM_BIN\" && -d \"$NPM_BIN\" ]]; then export PATH=\"$NPM_BIN:$PATH\"; fi
+  if [[ -n \"$NPM_PREFIX\" && -d \"$NPM_PREFIX/bin\" ]]; then export PATH=\"$NPM_PREFIX/bin:$PATH\"; fi
+  if [[ -d '/.sprite/languages/node/nvm/versions/node/v22.20.0/bin' ]]; then export PATH='/.sprite/languages/node/nvm/versions/node/v22.20.0/bin:'\"$PATH\"; fi
+  export PATH=\"$HOME/.local/bin:$PATH\"
+  hash -r
+  command -v openclaw
+  openclaw --version
+"
+echo "[2/4] Checking gateway health (best-effort)"
+# On Sprites, systemd user services are unavailable. Gateway service checks may fail.
+# We keep this best-effort and don't fail the verify on it.
+sprite exec -s "$NAME" bash -lc "openclaw gateway health || openclaw gateway status || true" || true
 
 echo "[3/4] Checking pmprompt skills are discoverable"
 # Ensure our expected skills exist in workspace
@@ -38,7 +49,7 @@ sprite exec -s "$NAME" bash -lc "openclaw skills list | sed -n '1,120p'"
 sprite exec -s "$NAME" bash -lc "openclaw skills list | grep -q '\\bshaping\\b'"
 
 echo "[4/4] Running a local agent turn (requires model key configured)"
-# Run embedded agent to ensure model/provider works. This does not require Telegram or any channel.
+# Run embedded agent to ensure model/provider works. This does not require Telegram or any gateway service.
+# (Provider keys must be present in the sprite config from onboarding.)
 sprite exec -s "$NAME" bash -lc "openclaw agent --local --message 'Reply with exactly: READY. Then list 3 pmprompt skills you can run.' --timeout 120"
-
 echo "PASS"
