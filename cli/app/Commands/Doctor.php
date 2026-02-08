@@ -34,7 +34,7 @@ class Doctor extends Command
         $ok = true;
         try {
             \App\Support\EnvPreflight::ensureSpriteCliInstalled(fix: (bool) $this->option('fix'));
-            \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true);
+            \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true, fix: (bool) $this->option('fix'));
         } catch (\Throwable $e) {
             $this->error($e->getMessage());
             $ok = false;

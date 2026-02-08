@@ -169,8 +169,22 @@ class EnvPreflight
         return $env;
     }
 
-    public static function ensureSpriteCliAuthenticated(bool $interactive = true): void
+    public static function ensureSpriteCliAuthenticated(bool $interactive = true, bool $fix = false): void
     {
+        // First, do a quick non-interactive probe so we can show accurate guidance.
+        $probeOut = shell_exec('sprite list 2>&1') ?? '';
+        if (stripos($probeOut, 'no organizations configured') !== false || stripos($probeOut, 'sprite login') !== false) {
+            $msg = "Sprites CLI is not authenticated (no org configured). Run:\n  sprite login\nThen run:\n  sprite list";
+
+            if ($fix && confirm('Sprites needs login. Run `sprite login` now? (opens browser)', default: true)) {
+                $code = 0;
+                passthru('sprite login', $code);
+            } else {
+                error($msg);
+                throw new \RuntimeException('Sprites CLI not authenticated');
+            }
+        }
+
         // Sprites may need a one-time org selection to mint a token.
         // If we suppress output, it looks like a hang. So we run interactively by default.
         $cmd = $interactive ? 'sprite list' : 'sprite list >/dev/null 2>&1';
@@ -184,7 +198,7 @@ class EnvPreflight
         }
 
         if ($code !== 0) {
-            error("Sprites CLI isn't authenticated yet. Run:\n  sprite org auth\nThen run:\n  sprite list");
+            error("Sprites CLI isn't authenticated yet. If this is a fresh setup run:\n  sprite login\nThen run:\n  sprite list\n(and pick an org if prompted)");
             throw new \RuntimeException('Sprites CLI not authenticated');
         }
     }
