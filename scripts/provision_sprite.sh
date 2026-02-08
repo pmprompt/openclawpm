@@ -45,8 +45,21 @@ fi
 PM_SKILLS_REPO="${PM_SKILLS_REPO:-git@github.com:pmprompt/claude-plugin-product-management.git}"
 PM_SKILLS_REF="${PM_SKILLS_REF:-main}"
 
-# base64 portability: GNU uses -w; BSD/macOS does not. Use tr to strip newlines.
-SYS_PROMPT_B64="$(base64 < "$(dirname "$0")/../prompts/system-prompt-pm.txt" | tr -d '\n')"
+# base64 portability: GNU uses -w; BSD/macOS does not.
+# Use tr to strip newlines. (Also strip CR just in case.)
+_b64() { base64 | tr -d '\n' | tr -d '\r'; }
+
+SYS_PROMPT_B64="$(base64 < "$(dirname "$0")/../prompts/system-prompt-pm.txt" | tr -d '\n' | tr -d '\r')"
+
+# Avoid quoting issues when passing secrets to sprite exec by base64-encoding them.
+OPENAI_API_KEY_B64="$(printf %s "${OPENAI_API_KEY:-}" | _b64)"
+ANTHROPIC_API_KEY_B64="$(printf %s "${ANTHROPIC_API_KEY:-}" | _b64)"
+OPENROUTER_API_KEY_B64="$(printf %s "${OPENROUTER_API_KEY:-}" | _b64)"
+
+OPENCLAW_MODEL_PRIMARY_B64="$(printf %s "${OPENCLAW_MODEL_PRIMARY:-}" | _b64)"
+PM_SKILLS_REPO_B64="$(printf %s "${PM_SKILLS_REPO}" | _b64)"
+PM_SKILLS_REF_B64="$(printf %s "${PM_SKILLS_REF}" | _b64)"
+
 
 echo "[1/6] Creating sprite: $NAME"
 # Create sprite (if it already exists, reuse it)
@@ -58,14 +71,36 @@ sprite use "$NAME"
 echo "[2/6] Bootstrapping OpenClaw + skills inside the Sprite"
 
 # Build a single in-sprite bootstrap script and run it to avoid fragile quote-escaping.
-BOOT_SCRIPT_B64="$(base64 <<'EOS' | tr -d '\n'
+BOOT_SCRIPT_B64="$(base64 <<'EOS' | tr -d '\n' | tr -d '\r'
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Expect env vars:
-#   OPENCLAW_GATEWAY_TOKEN, SYS_PROMPT_B64, PM_SKILLS_REPO, PM_SKILLS_REF
-#   Optional: OPENCLAW_MODEL_PRIMARY
-#   One provider key: OPENAI_API_KEY | ANTHROPIC_API_KEY | OPENROUTER_API_KEY
+# Expect env vars (all base64):
+#   OPENCLAW_GATEWAY_TOKEN
+#   SYS_PROMPT_B64
+#   PM_SKILLS_REPO_B64, PM_SKILLS_REF_B64
+#   OPENCLAW_MODEL_PRIMARY_B64
+#   OPENAI_API_KEY_B64 | ANTHROPIC_API_KEY_B64 | OPENROUTER_API_KEY_B64
+
+b64d() {
+  local v="$1"
+  if [[ -z "$v" ]]; then
+    printf ''
+    return 0
+  fi
+  printf '%s' "$v" | base64 -d
+}
+
+# Decode config values
+PM_SKILLS_REPO="$(b64d "${PM_SKILLS_REPO_B64:-}")"
+PM_SKILLS_REF="$(b64d "${PM_SKILLS_REF_B64:-}")"
+OPENCLAW_MODEL_PRIMARY="$(b64d "${OPENCLAW_MODEL_PRIMARY_B64:-}")"
+
+OPENAI_API_KEY="$(b64d "${OPENAI_API_KEY_B64:-}")"
+ANTHROPIC_API_KEY="$(b64d "${ANTHROPIC_API_KEY_B64:-}")"
+OPENROUTER_API_KEY="$(b64d "${OPENROUTER_API_KEY_B64:-}")"
+
+export OPENAI_API_KEY ANTHROPIC_API_KEY OPENROUTER_API_KEY
 
 if ! command -v openclaw >/dev/null 2>&1; then
   echo '[openclawpm] Installing OpenClaw (skip onboard)...'
@@ -161,13 +196,13 @@ sprite exec bash -lc "set -euo pipefail
   chmod +x /tmp/openclawpm_bootstrap.sh
 
   OPENCLAW_GATEWAY_TOKEN='${OPENCLAW_GATEWAY_TOKEN}' \
-  OPENCLAW_MODEL_PRIMARY='${OPENCLAW_MODEL_PRIMARY:-}' \
-  OPENAI_API_KEY='${OPENAI_API_KEY:-}' \
-  ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY:-}' \
-  OPENROUTER_API_KEY='${OPENROUTER_API_KEY:-}' \
-  PM_SKILLS_REPO='${PM_SKILLS_REPO}' \
-  PM_SKILLS_REF='${PM_SKILLS_REF}' \
   SYS_PROMPT_B64='${SYS_PROMPT_B64}' \
+  PM_SKILLS_REPO_B64='${PM_SKILLS_REPO_B64}' \
+  PM_SKILLS_REF_B64='${PM_SKILLS_REF_B64}' \
+  OPENCLAW_MODEL_PRIMARY_B64='${OPENCLAW_MODEL_PRIMARY_B64}' \
+  OPENAI_API_KEY_B64='${OPENAI_API_KEY_B64}' \
+  ANTHROPIC_API_KEY_B64='${ANTHROPIC_API_KEY_B64}' \
+  OPENROUTER_API_KEY_B64='${OPENROUTER_API_KEY_B64}' \
   bash /tmp/openclawpm_bootstrap.sh
 "
 
