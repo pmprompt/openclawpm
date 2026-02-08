@@ -8,6 +8,7 @@ use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\password;
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
+use function Laravel\Prompts\error;
 
 class EnvPreflight
 {
@@ -22,12 +23,12 @@ class EnvPreflight
         $msg = "Sprites CLI (sprite) not found. Install it with:\n  curl -fsSL https://sprites.dev/install.sh | sh\nThen restart your shell (ensure ~/.local/bin is on PATH), and run:\n  sprite org auth";
 
         if (! $fix) {
-            Prompt::error($msg);
+            error($msg);
             throw new \RuntimeException('Missing dependency: sprite');
         }
 
         if (! confirm('Sprites CLI not found. Install it now via the official install script?', default: false)) {
-            Prompt::error($msg);
+            error($msg);
             throw new \RuntimeException('Missing dependency: sprite');
         }
 
@@ -61,7 +62,7 @@ class EnvPreflight
         $existing = array_values(array_filter($candidates, fn ($p) => is_dir($p) || is_file($p)));
 
         if (empty($existing)) {
-            Prompt::error("No obvious Sprites auth/config paths found. If you're still stuck, run: sprite org auth");
+            error("No obvious Sprites auth/config paths found. If you're still stuck, run: sprite org auth");
             return;
         }
 
@@ -70,7 +71,7 @@ class EnvPreflight
         if (! $force) {
             $ok = confirm('Delete these local paths to reset Sprites auth?', default: false);
             if (! $ok) {
-                Prompt::error('Aborted.');
+                error('Aborted.');
                 return;
             }
         }
@@ -183,7 +184,7 @@ class EnvPreflight
         }
 
         if ($code !== 0) {
-            Prompt::error("Sprites CLI isn't authenticated yet. Run:\n  sprite org auth\nThen run:\n  sprite list");
+            error("Sprites CLI isn't authenticated yet. Run:\n  sprite org auth\nThen run:\n  sprite list");
             throw new \RuntimeException('Sprites CLI not authenticated');
         }
     }
