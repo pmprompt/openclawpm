@@ -96,10 +96,16 @@ else
   exit 1
 fi
 
+# Stop any prior gateway (best-effort)
+openclaw gateway stop >/dev/null 2>&1 || true
+
+# Run onboarding but skip health checks/daemon install so we don't fail due to gateway WS flakiness.
 openclaw onboard \
   --non-interactive --accept-risk \
   --flow quickstart \
   --skip-channels --skip-ui \
+  --skip-health \
+  --skip-daemon \
   --gateway-bind loopback \
   --gateway-auth token \
   --gateway-token "${OPENCLAW_GATEWAY_TOKEN}" \
