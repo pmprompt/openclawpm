@@ -50,7 +50,7 @@ openclaw skills list | sed -n '1,120p'
 openclaw skills list | grep -q '\bshaping\b'
 
 echo "[4/4] Running a local agent turn (requires model key configured)"
-openclaw agent --local --message 'Reply with exactly: READY. Then list 3 pmprompt skills you can run.' --timeout 120
+openclaw agent --local --session-id openclawpm-verify --message 'Reply with exactly: READY. Then list 3 pmprompt skills you can run.' --timeout 120
 
 echo "PASS"
 EOS
