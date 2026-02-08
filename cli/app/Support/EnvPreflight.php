@@ -11,6 +11,42 @@ use function Laravel\Prompts\text;
 
 class EnvPreflight
 {
+    public static function ensureSpriteCliInstalled(bool $fix = false): void
+    {
+        $code = 0;
+        @passthru('command -v sprite >/dev/null 2>&1', $code);
+        if ($code === 0) {
+            return;
+        }
+
+        $msg = "Sprites CLI (sprite) not found. Install it with:\n  curl -fsSL https://sprites.dev/install.sh | sh\nThen restart your shell (ensure ~/.local/bin is on PATH), and run:\n  sprite org auth";
+
+        if (! $fix) {
+            Prompt::error($msg);
+            throw new \RuntimeException('Missing dependency: sprite');
+        }
+
+        if (! confirm('Sprites CLI not found. Install it now via the official install script?', default: false)) {
+            Prompt::error($msg);
+            throw new \RuntimeException('Missing dependency: sprite');
+        }
+
+        Prompt::info('Installing Sprites CLI...');
+        $installCode = 0;
+        passthru('curl -fsSL https://sprites.dev/install.sh | sh', $installCode);
+        if ($installCode !== 0) {
+            throw new \RuntimeException('Failed to install Sprites CLI. See output above.');
+        }
+
+        Prompt::info('Installed. Ensure ~/.local/bin is on your PATH, then re-run this command.');
+        throw new \RuntimeException('Sprites CLI installed; restart shell and run again.');
+    }
+
+    public static function ensureGitignoreHasDotEnvPublic(string $repoRoot): void
+    {
+        self::ensureGitignoreHasDotEnv($repoRoot);
+    }
+
     /**
      * Ensure required env vars exist for provisioning.
      *

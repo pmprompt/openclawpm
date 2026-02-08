@@ -23,7 +23,7 @@ From `cli/`:
 
 ```bash
 composer install
-./openclawpm list
+./openclawpm doctor --fix
 ./openclawpm provision pm-agent-test
 ./openclawpm verify pm-agent-test
 ./openclawpm destroy pm-agent-test

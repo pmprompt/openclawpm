@@ -32,9 +32,10 @@ class ProvisionSprite extends Command
 
         $repoRoot = realpath(__DIR__.'/../../..');
 
-        // Preflight prompts for missing env vars and ensures sprite CLI auth.
-        $env = \App\Support\EnvPreflight::forProvisioning($repoRoot);
+        // Preflight: local deps + prompts for missing env vars.
+        \App\Support\EnvPreflight::ensureSpriteCliInstalled(fix: true);
         \App\Support\EnvPreflight::ensureSpriteCliAuthenticated();
+        $env = \App\Support\EnvPreflight::forProvisioning($repoRoot);
 
         $exports = '';
         foreach ($env as $k => $v) {
