@@ -193,10 +193,10 @@ EOS
 # Run the bootstrap script inside the sprite.
 # We avoid quoting issues by writing a small env file (KEY=VALUE) then executing.
 sprite exec bash -lc "set -euo pipefail
-  echo '$BOOT_SCRIPT_B64' | base64 -d > /tmp/openclawpm_bootstrap.sh
+  printf '%s' \"${BOOT_SCRIPT_B64}\" | base64 -d > /tmp/openclawpm_bootstrap.sh
   chmod +x /tmp/openclawpm_bootstrap.sh
 
-  cat > /tmp/openclawpm_env <<'EOF'
+  cat > /tmp/openclawpm_env <<EOF
 OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
 SYS_PROMPT_B64=${SYS_PROMPT_B64}
 PM_SKILLS_REPO_B64=${PM_SKILLS_REPO_B64}
