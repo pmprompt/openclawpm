@@ -60,12 +60,29 @@ sprite exec bash -lc "set -euo pipefail
   if ! command -v openclaw >/dev/null 2>&1; then
     echo '[openclawpm] Installing OpenClaw (skip onboard)...'
     curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard
-    # Ensure PATH picks up npm global prefix used by installer (Sprites uses nvm).
+    # Ensure PATH picks up npm global bin (Sprites uses nvm; installer warns PATH may be missing it).
     NPM_PREFIX=\"$(npm config get prefix 2>/dev/null || true)\"
+    NPM_BIN=\"$(npm bin -g 2>/dev/null || true)\"
+
+    if [[ -n \"\$NPM_BIN\" && -d \"\$NPM_BIN\" ]]; then
+      export PATH=\"\$NPM_BIN:\$PATH\"
+    fi
     if [[ -n \"\$NPM_PREFIX\" && -d \"\$NPM_PREFIX/bin\" ]]; then
       export PATH=\"\$NPM_PREFIX/bin:\$PATH\"
     fi
+
+    # Common Sprite nvm bin path (from installer warning)
+    if [[ -d '/.sprite/languages/node/nvm/versions/node/v22.20.0/bin' ]]; then
+      export PATH='/.sprite/languages/node/nvm/versions/node/v22.20.0/bin:'\"\$PATH\"
+    fi
+
     export PATH=\"\$HOME/.local/bin:\$PATH\"
+
+    # Debug (no secrets): show where openclaw ended up
+    echo "[openclawpm] npm bin -g: \$NPM_BIN"
+    echo "[openclawpm] npm prefix: \$NPM_PREFIX"
+    ls -la \"\$NPM_BIN/openclaw\" 2>/dev/null || true
+    hash -r
   fi
 
   command -v openclaw >/dev/null || (echo 'openclaw still not found after install' >&2; exit 1)
