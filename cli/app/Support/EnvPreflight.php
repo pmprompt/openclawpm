@@ -114,7 +114,7 @@ class EnvPreflight
             'ANTHROPIC_API_KEY' => getenv('ANTHROPIC_API_KEY') ?: null,
             'OPENROUTER_API_KEY' => getenv('OPENROUTER_API_KEY') ?: null,
             'OPENCLAW_MODEL_PRIMARY' => getenv('OPENCLAW_MODEL_PRIMARY') ?: null,
-            'PM_SKILLS_REPO' => getenv('PM_SKILLS_REPO') ?: 'git@github.com:pmprompt/claude-plugin-product-management.git',
+            'PM_SKILLS_REPO' => getenv('PM_SKILLS_REPO') ?: 'https://github.com/pmprompt/claude-plugin-product-management.git',
             'PM_SKILLS_REF' => getenv('PM_SKILLS_REF') ?: 'main',
         ];
 

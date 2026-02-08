@@ -40,7 +40,7 @@ PY
   export OPENCLAW_GATEWAY_TOKEN
 fi
 
-PM_SKILLS_REPO="${PM_SKILLS_REPO:-git@github.com:pmprompt/claude-plugin-product-management.git}"
+PM_SKILLS_REPO="${PM_SKILLS_REPO:-https://github.com/pmprompt/claude-plugin-product-management.git}"
 PM_SKILLS_REF="${PM_SKILLS_REF:-main}"
 
 # base64 portability: GNU uses -w; BSD/macOS does not.
