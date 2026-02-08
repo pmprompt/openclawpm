@@ -37,14 +37,14 @@ class ProvisionSprite extends Command
         \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true, fix: true);
         $env = \App\Support\EnvPreflight::forProvisioning($repoRoot);
 
-        $exports = '';
+        // Do NOT print secrets. Pass env vars via process env instead of inline shell exports.
         foreach ($env as $k => $v) {
             if ($v === null || $v === '') continue;
-            $exports .= $k.'='.escapeshellarg((string) $v).' ';
+            putenv($k.'='.$v);
         }
 
-        $cmd = $exports . sprintf('bash ../scripts/provision_sprite.sh --name %s', escapeshellarg($name));
-        $this->info("Running: $cmd");
+        $cmd = sprintf('bash ../scripts/provision_sprite.sh --name %s', escapeshellarg($name));
+        $this->info('Provisioning...');
         passthru($cmd, $code);
 
         if ($code !== 0) {

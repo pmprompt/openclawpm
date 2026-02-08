@@ -24,7 +24,10 @@ if [[ -z "$NAME" ]]; then
 fi
 
 echo "[1/6] Creating sprite: $NAME"
-sprite create "$NAME" || true
+# Create sprite (if it already exists, reuse it)
+if ! sprite create "$NAME"; then
+  echo "[openclawpm] Sprite already exists; reusing: $NAME"
+fi
 sprite use "$NAME"
 
 echo "[2/6] Bootstrapping OpenClaw (non-interactive)"
@@ -57,8 +60,12 @@ sprite exec bash -lc "set -euo pipefail
   if ! command -v openclaw >/dev/null 2>&1; then
     echo '[openclawpm] Installing OpenClaw (skip onboard)...'
     curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard
-    # Ensure PATH picks up global npm prefix used by installer
-    export PATH=\"$HOME/.npm-global/bin:$HOME/.local/bin:$PATH\"
+    # Ensure PATH picks up npm global prefix used by installer (Sprites uses nvm).
+    NPM_PREFIX=\"$(npm config get prefix 2>/dev/null || true)\"
+    if [[ -n \"$NPM_PREFIX\" && -d \"$NPM_PREFIX/bin\" ]]; then
+      export PATH=\"$NPM_PREFIX/bin:$PATH\"
+    fi
+    export PATH=\"$HOME/.local/bin:$PATH\"
   fi
 
   command -v openclaw >/dev/null || (echo 'openclaw still not found after install' >&2; exit 1)

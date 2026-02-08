@@ -160,7 +160,7 @@ class EnvPreflight
         // Sprites auth: not always via env var; verify CLI can talk to sprites.
         // We won’t prompt for SPRITES_TOKEN unless the user wants to persist it.
 
-        $persist = confirm('Persist these settings to a local .env file (gitignored)?', default: true);
+        $persist = confirm('Persist these settings to a local .env file (gitignored)?', default: false);
         if ($persist) {
             self::ensureGitignoreHasDotEnv($repoRoot);
             self::writeEnvFile($repoRoot, $env);

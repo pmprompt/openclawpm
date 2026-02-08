@@ -32,7 +32,7 @@ class DestroySprite extends Command
         \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true);
 
         $cmd = sprintf('bash ../scripts/destroy_sprite.sh --name %s', escapeshellarg($name));
-        $this->info("Running: $cmd");
+        $this->info('Destroying...');
         passthru($cmd, $code);
         return $code;
     }

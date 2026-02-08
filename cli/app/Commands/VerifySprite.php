@@ -33,7 +33,7 @@ class VerifySprite extends Command
         \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true);
 
         $cmd = sprintf('bash ../scripts/verify_sprite.sh --name %s', escapeshellarg($name));
-        $this->info("Running: $cmd");
+        $this->info('Verifying...');
         passthru($cmd, $code);
         return $code;
     }
