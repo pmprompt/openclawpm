@@ -60,7 +60,7 @@ See `.env.example`.
 
 ## Roadmap (thin slices)
 
-- [ ] MVP1: provision Sprite + install OpenClaw + install skills + Telegram chat works
+- [ ] MVP1: provision Sprite + install OpenClaw + install skills + **verify via CLI** (no Telegram)
 - [ ] MVP2: add HTTP bridge service (customer-safe) and route via agent.pmprompt.com
 - [ ] MVP3: context profiles injection (context pack) + artifacts persistence
 
