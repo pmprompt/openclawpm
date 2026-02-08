@@ -47,6 +47,56 @@ class EnvPreflight
         self::ensureGitignoreHasDotEnv($repoRoot);
     }
 
+    public static function resetSpriteAuth(bool $force = false): void
+    {
+        $home = rtrim((string) getenv('HOME'), '/');
+        $candidates = [
+            $home.'/.config/sprite',
+            $home.'/.config/sprites',
+            $home.'/.sprites',
+            $home.'/.cache/sprite',
+            $home.'/.cache/sprites',
+        ];
+
+        $existing = array_values(array_filter($candidates, fn ($p) => is_dir($p) || is_file($p)));
+
+        if (empty($existing)) {
+            Prompt::error("No obvious Sprites auth/config paths found. If you're still stuck, run: sprite org auth");
+            return;
+        }
+
+        \Laravel\Prompts\info("Found Sprites-related paths:\n- ".implode("\n- ", $existing));
+
+        if (! $force) {
+            $ok = confirm('Delete these local paths to reset Sprites auth?', default: false);
+            if (! $ok) {
+                Prompt::error('Aborted.');
+                return;
+            }
+        }
+
+        foreach ($existing as $path) {
+            self::rmrf($path);
+        }
+
+        \Laravel\Prompts\info('Removed local Sprites auth/config.');
+    }
+
+    private static function rmrf(string $path): void
+    {
+        if (is_file($path) || is_link($path)) {
+            @unlink($path);
+            return;
+        }
+        if (! is_dir($path)) return;
+
+        $items = array_diff(scandir($path) ?: [], ['.','..']);
+        foreach ($items as $item) {
+            self::rmrf($path.'/'.$item);
+        }
+        @rmdir($path);
+    }
+
     /**
      * Ensure required env vars exist for provisioning.
      *
