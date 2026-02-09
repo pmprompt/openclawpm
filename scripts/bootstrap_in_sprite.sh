@@ -57,6 +57,11 @@ else
   exit 1
 fi
 
+# Guardrail: OpenRouter auto model id
+if [[ -n "${OPENROUTER_API_KEY:-}" && "${OPENCLAW_MODEL_PRIMARY:-}" == "openrouter/auto" ]]; then
+  OPENCLAW_MODEL_PRIMARY="openrouter/openrouter/auto"
+fi
+
 # Stop any prior gateway (best-effort)
 openclaw gateway stop >/dev/null 2>&1 || true
 
@@ -108,6 +113,17 @@ else
   cp -R /tmp/pmprompt-skills/skills/* "$WS/skills/"
 fi
 
+# Keep workspace context lean (large files increase prompt size dramatically)
+cat > "$WS/AGENTS.md" <<'EOF'
+# AGENTS.md
+
+You are a product-management-focused assistant.
+
+- Be practical and artifact-first.
+- Prefer structured outputs.
+- Ask minimal clarifying questions.
+EOF
+
 cat > "$WS/IDENTITY.md" <<'EOF'
 # IDENTITY.md
 
@@ -124,6 +140,9 @@ cat > "$WS/USER.md" <<'EOF'
 - **Default ICP:** professional product managers
 - **Focus:** producing shippable artifacts (PRDs, decision memos, shaping pitches)
 EOF
+
+# Remove bootstrap file so it doesn't get injected into the system prompt
+rm -f "$WS/BOOTSTRAP.md" || true
 
 openclaw gateway start || true
 openclaw gateway status || true
