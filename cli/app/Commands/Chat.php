@@ -112,7 +112,6 @@ BASH;
                     $frame = $frames[$i % count($frames)];
                     $i++;
                     $this->output->write("\rKramer: thinking {$frame} ({$elapsed}s)");
-                    $this->output->flush();
                 }
 
                 usleep(200_000);
