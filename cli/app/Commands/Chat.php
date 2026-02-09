@@ -72,8 +72,8 @@ BASH;
 
             $descriptors = [
                 0 => ['pipe', 'r'],
-                1 => STDOUT,
-                2 => STDERR,
+                1 => ['pipe', 'w'],
+                2 => ['pipe', 'w'],
             ];
 
             $proc = proc_open($cmd, $descriptors, $pipes);
@@ -87,13 +87,31 @@ BASH;
             fwrite($pipes[0], "export SESSION_ID=".escapeshellarg($sessionId)."\n");
             fwrite($pipes[0], "export THINKING=".escapeshellarg($thinking)."\n");
             fwrite($pipes[0], "export TIMEOUT=".escapeshellarg((string) $timeout)."\n");
-            fwrite($pipes[0], $script);
+            fwrite($pipes[0], $script."\n");
             fclose($pipes[0]);
 
+            // Read output so the user actually sees the response.
+            $stdout = stream_get_contents($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+
             $code = proc_close($proc);
+
+            $out = trim((string) $stdout);
+            if ($out !== '') {
+                $this->newLine();
+                $this->line($out);
+                $this->newLine();
+            }
+
+            $err = trim((string) $stderr);
+            if ($err !== '') {
+                $this->error($err);
+            }
+
             if ($code !== 0) {
                 $this->error("Turn failed (exit {$code}).");
-                // Keep loop alive; user can try again.
             }
         }
     }
