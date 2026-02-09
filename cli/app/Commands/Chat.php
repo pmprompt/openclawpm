@@ -11,7 +11,8 @@ class Chat extends Command
                             {name : Sprite name}
                             {--session=tui : Session id (stored on the Sprite)}
                             {--thinking=low : Thinking level (off|minimal|low|medium|high)}
-                            {--timeout=600 : Timeout seconds per turn}';
+                            {--timeout=600 : Timeout seconds per turn}
+                            {--no-spinner : Disable the waiting spinner}';
 
     protected $description = 'Basic TUI chat: run openclaw agent --local inside a Sprite in a loop.';
 
@@ -21,6 +22,7 @@ class Chat extends Command
         $sessionId = (string) $this->option('session');
         $thinking = (string) $this->option('thinking');
         $timeout = (int) $this->option('timeout');
+        $spinnerEnabled = ! (bool) $this->option('no-spinner');
 
         \App\Support\EnvPreflight::ensureSpriteCliInstalled(fix: false);
         \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true, fix: false);
@@ -93,6 +95,33 @@ BASH;
             fwrite($pipes[0], $script."\n");
             fclose($pipes[0]);
 
+            $start = microtime(true);
+            $frames = ['|', '/', '-', '\\'];
+            $i = 0;
+
+            // Simple spinner while waiting.
+            // We don't stream tokens yet; this is just progress feedback.
+            while (true) {
+                $st = proc_get_status($proc);
+                if (! $st['running']) {
+                    break;
+                }
+
+                if ($spinnerEnabled) {
+                    $elapsed = (int) floor(microtime(true) - $start);
+                    $frame = $frames[$i % count($frames)];
+                    $i++;
+                    $this->output->write("\rKramer: thinking {$frame} ({$elapsed}s)");
+                    $this->output->flush();
+                }
+
+                usleep(200_000);
+            }
+
+            if ($spinnerEnabled) {
+                $this->output->write("\r".str_repeat(' ', 40)."\r");
+            }
+
             // Read output so the user actually sees the response.
             $stdout = stream_get_contents($pipes[1]);
             $stderr = stream_get_contents($pipes[2]);
@@ -103,9 +132,7 @@ BASH;
 
             $out = trim((string) $stdout);
             if ($out !== '') {
-                $this->newLine();
-                $this->line($out);
-                $this->newLine();
+                $this->line("Kramer>\n".$out."\n");
             }
 
             $err = trim((string) $stderr);
