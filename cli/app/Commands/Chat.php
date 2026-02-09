@@ -4,7 +4,6 @@ namespace App\Commands;
 
 use Illuminate\Console\Scheduling\Schedule;
 use LaravelZero\Framework\Commands\Command;
-use function Laravel\Prompts\text;
 
 class Chat extends Command
 {
@@ -31,20 +30,24 @@ class Chat extends Command
         $this->line('Type /exit to quit.');
 
         while (true) {
-            $input = text(
-                label: 'You',
-                placeholder: 'Ask something…',
-                required: true
-            );
+            $this->output->write("You> ");
+            $input = fgets(STDIN);
+            if ($input === false) {
+                $this->line('\nBye.');
+                return 0;
+            }
 
             $trim = trim($input);
+            if ($trim === '' ) {
+                continue;
+            }
             if ($trim === '/exit' || $trim === '/quit') {
                 $this->line('Bye.');
                 return 0;
             }
 
             // base64 the message so we avoid quote escaping issues.
-            $msgB64 = base64_encode($input);
+            $msgB64 = base64_encode($trim);
 
             $script = <<<'BASH'
 set -euo pipefail
