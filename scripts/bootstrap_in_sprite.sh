@@ -74,6 +74,24 @@ openclaw onboard \
 
 if [[ -n "${OPENCLAW_MODEL_PRIMARY:-}" ]]; then
   openclaw config set agents.defaults.model.primary "${OPENCLAW_MODEL_PRIMARY}"
+
+  # Ensure the model is present in agents.defaults.models when using explicit model ids (esp. OpenRouter).
+  python3 - <<'PY'
+import json, os
+from pathlib import Path
+cfg_path = Path.home() / '.openclaw' / 'openclaw.json'
+model = os.environ.get('OPENCLAW_MODEL_PRIMARY','')
+if not cfg_path.exists() or not model:
+    raise SystemExit(0)
+
+cfg = json.loads(cfg_path.read_text())
+agents = cfg.setdefault('agents', {}).setdefault('defaults', {})
+models = agents.setdefault('models', {})
+models.setdefault(model, {})
+
+cfg_path.write_text(json.dumps(cfg, indent=2, sort_keys=True) + "\n")
+print(f"[openclawpm] ensured model present in config: {model}")
+PY
 fi
 
 WS="$(openclaw config get agents.defaults.workspace)"

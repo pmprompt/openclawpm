@@ -151,10 +151,38 @@ class EnvPreflight
             }
         }
 
+        // Model selection
         if ($env['OPENCLAW_MODEL_PRIMARY'] === null) {
-            if (confirm('Do you want to set an OpenClaw primary model alias? (e.g. sonnet)', default: false)) {
-                $env['OPENCLAW_MODEL_PRIMARY'] = text('OPENCLAW_MODEL_PRIMARY', placeholder: 'sonnet');
+            // If OpenRouter is selected, default to the OpenRouter auto router.
+            if (! empty($env['OPENROUTER_API_KEY'])) {
+                $env['OPENCLAW_MODEL_PRIMARY'] = select(
+                    label: 'Choose primary model (OpenRouter)',
+                    options: [
+                        'openrouter/openrouter/auto' => 'openrouter/openrouter/auto (recommended default)',
+                        'openrouter/anthropic/claude-sonnet-4.5' => 'openrouter/anthropic/claude-sonnet-4.5',
+                        'openrouter/anthropic/claude-haiku-3.5' => 'openrouter/anthropic/claude-haiku-3.5',
+                        'openrouter/google/gemini-pro-1.5' => 'openrouter/google/gemini-pro-1.5',
+                        'custom' => 'Custom…',
+                    ],
+                    default: 'openrouter/openrouter/auto'
+                );
+
+                if ($env['OPENCLAW_MODEL_PRIMARY'] === 'custom') {
+                    $env['OPENCLAW_MODEL_PRIMARY'] = text(
+                        label: 'OPENCLAW_MODEL_PRIMARY',
+                        placeholder: 'openrouter/<author>/<slug> (e.g. openrouter/openrouter/auto)'
+                    );
+                }
+            } else {
+                if (confirm('Do you want to set an OpenClaw primary model alias? (e.g. sonnet)', default: false)) {
+                    $env['OPENCLAW_MODEL_PRIMARY'] = text('OPENCLAW_MODEL_PRIMARY', placeholder: 'sonnet');
+                }
             }
+        }
+
+        // Guardrail: common OpenRouter mistake
+        if (! empty($env['OPENROUTER_API_KEY']) && ($env['OPENCLAW_MODEL_PRIMARY'] ?? '') === 'openrouter/auto') {
+            $env['OPENCLAW_MODEL_PRIMARY'] = 'openrouter/openrouter/auto';
         }
 
         // Sprites auth: not always via env var; verify CLI can talk to sprites.
