@@ -13,7 +13,8 @@ class Chat extends Command
                             {--thinking=low : Thinking level (off|minimal|low|medium|high)}
                             {--timeout=600 : Timeout seconds per turn}
                             {--no-spinner : Disable the waiting spinner}
-                            {--debug : Print extra diagnostics when a turn returns no output}';
+                            {--debug : Print extra diagnostics when a turn returns no output}
+                            {--passthru : Do not capture stdout/stderr; stream sprite output directly}';
 
     protected $description = 'Basic TUI chat: run openclaw agent --local inside a Sprite in a loop.';
 
@@ -25,6 +26,7 @@ class Chat extends Command
         $timeout = (int) $this->option('timeout');
         $spinnerEnabled = ! (bool) $this->option('no-spinner');
         $debug = (bool) $this->option('debug');
+        $passthru = (bool) $this->option('passthru');
 
         \App\Support\EnvPreflight::ensureSpriteCliInstalled(fix: false);
         \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true, fix: false);
@@ -77,82 +79,108 @@ BASH;
             // Send the script via stdin to avoid local shell parsing issues.
             $cmd = sprintf('sprite exec -s %s bash -s', escapeshellarg($name));
 
-            $descriptors = [
-                0 => ['pipe', 'r'],
-                1 => ['pipe', 'w'],
-                2 => ['pipe', 'w'],
-            ];
+            if ($passthru) {
+                // Stream output directly to the terminal (most reliable with sprite exec).
+                $this->line('Kramer: thinking...');
 
-            $proc = proc_open($cmd, $descriptors, $pipes);
-            if (! is_resource($proc)) {
-                $this->error('Failed to start sprite exec');
-                return 1;
-            }
+                $descriptors = [
+                    0 => ['pipe', 'r'],
+                    1 => STDOUT,
+                    2 => STDERR,
+                ];
 
-            // Export env vars for the script.
-            fwrite($pipes[0], "export MSG_B64=".escapeshellarg($msgB64)."\n");
-            fwrite($pipes[0], "export SESSION_ID=".escapeshellarg($sessionId)."\n");
-            fwrite($pipes[0], "export THINKING=".escapeshellarg($thinking)."\n");
-            fwrite($pipes[0], "export TIMEOUT=".escapeshellarg((string) $timeout)."\n");
-            fwrite($pipes[0], $script."\n");
-            fclose($pipes[0]);
+                $proc = proc_open($cmd, $descriptors, $pipes);
+                if (! is_resource($proc)) {
+                    $this->error('Failed to start sprite exec');
+                    return 1;
+                }
 
-            $start = microtime(true);
-            $frames = ['|', '/', '-', '\\'];
-            $i = 0;
+                fwrite($pipes[0], "export MSG_B64=".escapeshellarg($msgB64)."\n");
+                fwrite($pipes[0], "export SESSION_ID=".escapeshellarg($sessionId)."\n");
+                fwrite($pipes[0], "export THINKING=".escapeshellarg($thinking)."\n");
+                fwrite($pipes[0], "export TIMEOUT=".escapeshellarg((string) $timeout)."\n");
+                fwrite($pipes[0], $script."\n");
+                fclose($pipes[0]);
 
-            // Simple spinner while waiting.
-            // We don't stream tokens yet; this is just progress feedback.
-            while (true) {
-                $st = proc_get_status($proc);
-                if (! $st['running']) {
-                    break;
+                $code = proc_close($proc);
+                if ($code !== 0) {
+                    $this->error("Turn failed (exit {$code}).");
+                }
+            } else {
+                // Capture mode (enables spinner), but can be flaky depending on sprite exec behavior.
+                $descriptors = [
+                    0 => ['pipe', 'r'],
+                    1 => ['pipe', 'w'],
+                    2 => ['pipe', 'w'],
+                ];
+
+                $proc = proc_open($cmd, $descriptors, $pipes);
+                if (! is_resource($proc)) {
+                    $this->error('Failed to start sprite exec');
+                    return 1;
+                }
+
+                fwrite($pipes[0], "export MSG_B64=".escapeshellarg($msgB64)."\n");
+                fwrite($pipes[0], "export SESSION_ID=".escapeshellarg($sessionId)."\n");
+                fwrite($pipes[0], "export THINKING=".escapeshellarg($thinking)."\n");
+                fwrite($pipes[0], "export TIMEOUT=".escapeshellarg((string) $timeout)."\n");
+                fwrite($pipes[0], $script."\n");
+                fclose($pipes[0]);
+
+                $start = microtime(true);
+                $frames = ['|', '/', '-', '\\'];
+                $i = 0;
+
+                while (true) {
+                    $st = proc_get_status($proc);
+                    if (! $st['running']) {
+                        break;
+                    }
+
+                    if ($spinnerEnabled) {
+                        $elapsed = (int) floor(microtime(true) - $start);
+                        $frame = $frames[$i % count($frames)];
+                        $i++;
+                        $this->output->write("\rKramer: thinking {$frame} ({$elapsed}s)");
+                    }
+
+                    usleep(200_000);
                 }
 
                 if ($spinnerEnabled) {
-                    $elapsed = (int) floor(microtime(true) - $start);
-                    $frame = $frames[$i % count($frames)];
-                    $i++;
-                    $this->output->write("\rKramer: thinking {$frame} ({$elapsed}s)");
+                    $this->output->write("\r".str_repeat(' ', 40)."\r");
                 }
 
-                usleep(200_000);
-            }
+                $stdout = stream_get_contents($pipes[1]);
+                $stderr = stream_get_contents($pipes[2]);
+                fclose($pipes[1]);
+                fclose($pipes[2]);
 
-            if ($spinnerEnabled) {
-                $this->output->write("\r".str_repeat(' ', 40)."\r");
-            }
+                $code = proc_close($proc);
 
-            // Read output so the user actually sees the response.
-            $stdout = stream_get_contents($pipes[1]);
-            $stderr = stream_get_contents($pipes[2]);
-            fclose($pipes[1]);
-            fclose($pipes[2]);
+                $out = trim((string) $stdout);
+                $err = trim((string) $stderr);
 
-            $code = proc_close($proc);
-
-            $out = trim((string) $stdout);
-            $err = trim((string) $stderr);
-
-            if ($out !== '') {
-                $this->line("Kramer>\n".$out."\n");
-            } else {
-                $this->line("Kramer> (no output)");
-                if ($debug) {
-                    $this->line("[debug] exit={$code} stdout_len=".strlen((string)$stdout)." stderr_len=".strlen((string)$stderr));
+                if ($out !== '') {
+                    $this->line("Kramer>\n".$out."\n");
+                } else {
+                    $this->line("Kramer> (no output)");
+                    if ($debug) {
+                        $this->line("[debug] exit={$code} stdout_len=".strlen((string)$stdout)." stderr_len=".strlen((string)$stderr));
+                    }
                 }
-            }
 
-            if ($err !== '') {
-                $this->error($err);
-            }
+                if ($err !== '') {
+                    $this->error($err);
+                }
 
-            if ($code !== 0) {
-                $this->error("Turn failed (exit {$code}).");
-            }
+                if ($code !== 0) {
+                    $this->error("Turn failed (exit {$code}).");
+                }
 
-            if ($debug && $out === '' && $err === '') {
-                $this->line('[debug] If you expected output, try: ./openclawpm verify '.$name);
+                if ($debug && $out === '' && $err === '') {
+                    $this->line('[debug] If you expected output, try: ./openclawpm verify '.$name);
+                }
             }
         }
     }
