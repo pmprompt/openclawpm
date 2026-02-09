@@ -12,7 +12,8 @@ class Chat extends Command
                             {--session=tui : Session id (stored on the Sprite)}
                             {--thinking=low : Thinking level (off|minimal|low|medium|high)}
                             {--timeout=600 : Timeout seconds per turn}
-                            {--no-spinner : Disable the waiting spinner}';
+                            {--no-spinner : Disable the waiting spinner}
+                            {--debug : Print extra diagnostics when a turn returns no output}';
 
     protected $description = 'Basic TUI chat: run openclaw agent --local inside a Sprite in a loop.';
 
@@ -23,6 +24,7 @@ class Chat extends Command
         $thinking = (string) $this->option('thinking');
         $timeout = (int) $this->option('timeout');
         $spinnerEnabled = ! (bool) $this->option('no-spinner');
+        $debug = (bool) $this->option('debug');
 
         \App\Support\EnvPreflight::ensureSpriteCliInstalled(fix: false);
         \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true, fix: false);
@@ -130,17 +132,27 @@ BASH;
             $code = proc_close($proc);
 
             $out = trim((string) $stdout);
+            $err = trim((string) $stderr);
+
             if ($out !== '') {
                 $this->line("Kramer>\n".$out."\n");
+            } else {
+                $this->line("Kramer> (no output)");
+                if ($debug) {
+                    $this->line("[debug] exit={$code} stdout_len=".strlen((string)$stdout)." stderr_len=".strlen((string)$stderr));
+                }
             }
 
-            $err = trim((string) $stderr);
             if ($err !== '') {
                 $this->error($err);
             }
 
             if ($code !== 0) {
                 $this->error("Turn failed (exit {$code}).");
+            }
+
+            if ($debug && $out === '' && $err === '') {
+                $this->line('[debug] If you expected output, try: ./openclawpm verify '.$name);
             }
         }
     }
