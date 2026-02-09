@@ -69,11 +69,40 @@ hash -r
 
 MSG="$(printf '%s' "$MSG_B64" | base64 -d)"
 
+echo "[chat] session=$SESSION_ID thinking=$THINKING timeout=$TIMEOUT" >&2
+
+# Run and force a machine-readable output.
+# If sprite exec has TTY quirks, we still want *something* to print.
 openclaw agent --local \
   --session-id "$SESSION_ID" \
   --thinking "$THINKING" \
   --timeout "$TIMEOUT" \
-  --message "$MSG"
+  --json \
+  --message "$MSG" \
+  | tee /tmp/openclawpm_last_turn.json
+
+code=${PIPESTATUS[0]}
+if [[ $code -ne 0 ]]; then
+  echo "[chat] openclaw agent failed exit=$code" >&2
+  exit $code
+fi
+
+# Print a friendly text summary if present in the JSON.
+python3 - <<'PY'
+import json
+p='/tmp/openclawpm_last_turn.json'
+try:
+    data=json.load(open(p))
+except Exception as e:
+    print(f"[chat] failed to parse json: {e}")
+    raise SystemExit(0)
+
+text = data.get('text') or data.get('message') or ''
+if isinstance(text, str) and text.strip():
+    print(text.strip())
+else:
+    print('[chat] (no text field in json)')
+PY
 BASH;
 
             // Send the script via stdin to avoid local shell parsing issues.
