@@ -151,32 +151,78 @@ class EnvPreflight
             }
         }
 
-        // Model selection
+        // Model selection (short names w/ magic mapping)
         if ($env['OPENCLAW_MODEL_PRIMARY'] === null) {
-            // If OpenRouter is selected, default to the OpenRouter auto router.
-            if (! empty($env['OPENROUTER_API_KEY'])) {
-                $env['OPENCLAW_MODEL_PRIMARY'] = select(
-                    label: 'Choose primary model (OpenRouter)',
+            $provider = ! empty($env['OPENROUTER_API_KEY']) ? 'openrouter'
+                : (! empty($env['ANTHROPIC_API_KEY']) ? 'anthropic'
+                : (! empty($env['OPENAI_API_KEY']) ? 'openai' : 'unknown'));
+
+            $picked = null;
+            if ($provider === 'openrouter') {
+                $picked = select(
+                    label: 'Pick a primary model (OpenRouter)',
                     options: [
-                        'openrouter/openrouter/auto' => 'openrouter/openrouter/auto (recommended default)',
-                        'openrouter/anthropic/claude-sonnet-4.5' => 'openrouter/anthropic/claude-sonnet-4.5',
-                        'openrouter/anthropic/claude-haiku-3.5' => 'openrouter/anthropic/claude-haiku-3.5',
-                        'openrouter/google/gemini-pro-1.5' => 'openrouter/google/gemini-pro-1.5',
+                        'auto' => 'Auto (recommended) — OpenRouter picks a cost-effective model',
+                        'sonnet' => 'Claude Sonnet 4.5 (quality default)',
+                        'haiku' => 'Claude Haiku 3.5 (cheap + fast)',
+                        'deepseek' => 'DeepSeek Chat',
+                        'gemini' => 'Gemini Pro 1.5',
+                        'kimi' => 'Kimi K2.5',
                         'custom' => 'Custom…',
                     ],
-                    default: 'openrouter/openrouter/auto'
+                    default: 'auto'
                 );
+            } elseif ($provider === 'anthropic') {
+                $picked = select(
+                    label: 'Pick a primary model (Anthropic)',
+                    options: [
+                        'sonnet' => 'Sonnet (recommended)',
+                        'haiku' => 'Haiku (cheap + fast)',
+                        'custom' => 'Custom…',
+                    ],
+                    default: 'sonnet'
+                );
+            } elseif ($provider === 'openai') {
+                $picked = select(
+                    label: 'Pick a primary model (OpenAI)',
+                    options: [
+                        'codex' => 'Codex GPT-5.2 (default)',
+                        'custom' => 'Custom…',
+                    ],
+                    default: 'codex'
+                );
+            }
 
-                if ($env['OPENCLAW_MODEL_PRIMARY'] === 'custom') {
-                    $env['OPENCLAW_MODEL_PRIMARY'] = text(
-                        label: 'OPENCLAW_MODEL_PRIMARY',
-                        placeholder: 'openrouter/<author>/<slug> (e.g. openrouter/openrouter/auto)'
-                    );
-                }
-            } else {
-                if (confirm('Do you want to set an OpenClaw primary model alias? (e.g. sonnet)', default: false)) {
-                    $env['OPENCLAW_MODEL_PRIMARY'] = text('OPENCLAW_MODEL_PRIMARY', placeholder: 'sonnet');
-                }
+            $map = [
+                // OpenRouter
+                'openrouter:auto' => 'openrouter/openrouter/auto',
+                'openrouter:sonnet' => 'openrouter/anthropic/claude-sonnet-4.5',
+                'openrouter:haiku' => 'openrouter/anthropic/claude-haiku-3.5',
+                'openrouter:deepseek' => 'openrouter/deepseek/deepseek-chat',
+                'openrouter:gemini' => 'openrouter/google/gemini-pro-1.5',
+                'openrouter:kimi' => 'openrouter/moonshotai/kimi-k2.5',
+
+                // Anthropic
+                'anthropic:sonnet' => 'sonnet',
+                'anthropic:haiku' => 'anthropic/claude-haiku-4-5',
+
+                // OpenAI
+                'openai:codex' => 'openai-codex/gpt-5.2',
+            ];
+
+            if ($picked === 'custom') {
+                $env['OPENCLAW_MODEL_PRIMARY'] = text(
+                    label: 'OPENCLAW_MODEL_PRIMARY',
+                    placeholder: $provider === 'openrouter'
+                        ? 'openrouter/<author>/<slug> (e.g. openrouter/openrouter/auto)'
+                        : 'model id or alias (e.g. sonnet)'
+                );
+            } elseif ($picked !== null) {
+                $env['OPENCLAW_MODEL_PRIMARY'] = $map[$provider.':'.$picked] ?? null;
+            }
+
+            if (! empty($env['OPENCLAW_MODEL_PRIMARY'])) {
+                \Laravel\Prompts\info('Using primary model: '.$env['OPENCLAW_MODEL_PRIMARY']);
             }
         }
 
