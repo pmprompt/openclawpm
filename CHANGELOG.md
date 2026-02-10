@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Chat Performance Optimizations**
+  - **Dynamic thinking levels**: First message uses `minimal` thinking for faster response (~30-50% speedup), subsequent messages use user's `--thinking` preference
+  - **Background session initialization**: Session warmup runs while user reads welcome message, overlapping wait time with user input
+  - **Session init indicator**: Shows "● Initializing session..." status so users know warmup is happening
+
+### Added
+
 - **Skills Framework**: Added Claude skills support with skill-creator and review-and-release skills
   - `skills/skill-creator/` - Tool for creating new skills with proper structure
   - `skills/review-and-release/` - Unified workflow for code review, testing, documentation, and release automation
