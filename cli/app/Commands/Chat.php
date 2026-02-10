@@ -21,6 +21,12 @@ class Chat extends Command
 
     private bool $hintShown = false;
 
+    private bool $isFirstMessage = true;
+
+    private string $userThinkingPreference = 'low';
+
+    private ?string $sessionInitPid = null;
+
     protected $signature = 'chat
                             {name : Sprite name}
                             {--session=tui : Session id (stored on the Sprite)}
@@ -30,13 +36,13 @@ class Chat extends Command
                             {--debug : Print extra diagnostics when a turn returns no output}
                             {--passthru : Do not capture stdout/stderr; stream sprite output directly}';
 
-    protected $description = 'Chat with your PM Agent';
+    protected $description = 'Chat with your PM Agent (first message uses minimal thinking for speed)';
 
     public function handle(): int
     {
         $name = (string) $this->argument('name');
         $sessionId = (string) $this->option('session');
-        $thinking = (string) $this->option('thinking');
+        $this->userThinkingPreference = (string) $this->option('thinking');
         $timeout = (int) $this->option('timeout');
         $spinnerEnabled = ! (bool) $this->option('no-spinner');
         $debug = (bool) $this->option('debug');
@@ -59,7 +65,14 @@ class Chat extends Command
         // Quick warmup to reduce first-message latency
         $this->warmupSprite($name);
 
+        // Start background session initialization
+        $this->startBackgroundSessionInit($name, $sessionId);
+
         $this->renderWelcomeMessage();
+
+        // Show initialization status
+        $this->line('  <fg=gray>● Initializing session...</>');
+        $this->newLine();
 
         while (true) {
             $this->renderInputArea();
@@ -94,7 +107,7 @@ class Chat extends Command
             $this->newLine();
 
             // Process the message
-            $this->processMessage($trim, $name, $sessionId, $thinking, $timeout, $spinnerEnabled, $passthru, $debug);
+            $this->processMessage($trim, $name, $sessionId, $timeout, $spinnerEnabled, $passthru, $debug);
         }
     }
 
@@ -169,6 +182,40 @@ BASH;
         $this->newLine();
     }
 
+    private function startBackgroundSessionInit(string $name, string $sessionId): void
+    {
+        // Start background process to initialize the session while user reads welcome message
+        $initScript = <<<'BASH'
+set -euo pipefail
+NPM_BIN="$(npm bin -g 2>/dev/null || true)"
+NPM_PREFIX="$(npm config get prefix 2>/dev/null || true)"
+if [[ -n "$NPM_BIN" && -d "$NPM_BIN" ]]; then export PATH="$NPM_BIN:$PATH"; fi
+if [[ -n "$NPM_PREFIX" && -d "$NPM_PREFIX/bin" ]]; then export PATH="$NPM_PREFIX/bin:$PATH"; fi
+if [[ -d '/.sprite/languages/node/nvm/versions/node' ]]; then
+    NODE_BIN_DIR="$(find /.sprite/languages/node/nvm/versions/node -name 'bin' -type d 2>/dev/null | head -1 || true)"
+    [[ -n "$NODE_BIN_DIR" ]] && export PATH="$NODE_BIN_DIR:$PATH"
+fi
+export PATH="$HOME/.local/bin:$PATH"
+hash -r
+
+# Initialize session in background (lightweight message to trigger skill/model loading)
+openclaw agent --local \
+  --session-id "$SESSION_ID" \
+  --thinking minimal \
+  --timeout 30 \
+  --message "init" > /dev/null 2>&1 || true
+BASH;
+
+        $cmd = sprintf(
+            'sprite exec -s %s bash -c %s > /dev/null 2>&1 & echo $!',
+            escapeshellarg($name),
+            escapeshellarg($initScript)
+        );
+
+        putenv('SESSION_ID='.$sessionId);
+        $this->sessionInitPid = exec($cmd);
+    }
+
     private function showCopyHint(): void
     {
         if (! $this->hintShown && $this->lastResponse !== null) {
@@ -211,12 +258,14 @@ BASH;
         string $message,
         string $name,
         string $sessionId,
-        string $thinking,
         int $timeout,
         bool $spinnerEnabled,
         bool $passthru,
         bool $debug
     ): void {
+        // Determine thinking level: minimal for first message, user preference for rest of session
+        $thinking = $this->isFirstMessage ? 'minimal' : $this->userThinkingPreference;
+
         $msgB64 = base64_encode($message);
         $script = $this->getBashScript();
         $cmd = sprintf('sprite exec -s %s bash -s', escapeshellarg($name));
@@ -227,6 +276,11 @@ BASH;
         } else {
             $result = $this->executeWithSpinner($cmd, $msgB64, $sessionId, $thinking, $timeout, $script, $spinnerEnabled);
             $this->renderResponse($result, $debug);
+        }
+
+        // Mark first message as complete
+        if ($this->isFirstMessage) {
+            $this->isFirstMessage = false;
         }
     }
 
@@ -385,6 +439,9 @@ BASH;
                 $this->lastResponse = $text;
                 $this->renderAgentMessage($text);
                 $this->showCopyHint();
+            } elseif ($data && isset($data['payloads']) && empty($data['payloads'])) {
+                // Empty response from model - likely an error or timeout
+                $this->warn('  ⚠️  Model returned empty response');
             } else {
                 $this->lastResponseRaw = $stdout;
                 $this->lastResponse = $stdout;
@@ -440,6 +497,14 @@ BASH;
 
                 if ($debug) {
                     $meta = $data['meta'] ?? [];
+                    $meta['_total_time'] = round($time, 2);
+                    $this->renderDebugInfo($meta);
+                }
+            } elseif ($data && isset($data['payloads']) && empty($data['payloads'])) {
+                // Empty response from model - likely an error or timeout
+                $this->warn('  ⚠️  Model returned empty response');
+                if ($debug && isset($data['meta'])) {
+                    $meta = $data['meta'];
                     $meta['_total_time'] = round($time, 2);
                     $this->renderDebugInfo($meta);
                 }
