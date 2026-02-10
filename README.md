@@ -1,69 +1,253 @@
-# openclawpm
+# OpenClaw PM Agent
 
-Provisioning + automation scaffolding for a **Product-Management-focused OpenClaw agent runtime**, intended to run in **Sprites** (Fly) as a per-user isolated environment.
+A beautifully designed TUI (Terminal User Interface) for product managers to set up and manage AI-powered product management workflows using OpenClaw.
 
-## What this repo is
+## What is this?
 
-This repo will contain scripts to:
+OpenClaw PM Agent is a CLI tool that abstracts the complexity of setting up [OpenClaw](https://github.com/anthropics/openclaw) with opinionated workflows and product management context. It runs on [Sprites](https://docs.sprites.dev/) (Fly.io's persistent, hardware-isolated Linux environments) to provide each PM with their own isolated AI assistant.
 
-- provision a new Sprite per user
-- install / configure OpenClaw non-interactively (no wizard)
-- install the pmprompt PM skills pack
-- configure a chat surface (prototype: Telegram; later: bridge service + agent.pmprompt.com)
+### Key Features
 
-## What this repo is not
+- **One-command provisioning** - Spin up a complete PM agent environment in minutes
+- **Beautiful TUI** - Terminal interface with intuitive commands and visual feedback
+- **Product Management Skills** - Pre-configured with the [pmprompt Claude plugin](https://github.com/pmprompt/claude-plugin-product-management) for PM-specific workflows
+- **Isolated environments** - Each user gets their own Sprite (microVM) with persistent storage
+- **Chat interface** - Interactive chat with your PM agent for brainstorming, PRDs, and more
 
-- No secrets. Do **not** commit API keys, cookies, tokens, chat IDs, private URLs.
+## Prerequisites
 
-## Quickstart
+Before you begin, you'll need:
 
-### CLI (Laravel Zero)
+1. **Sprites CLI** - Install from [docs.sprites.dev](https://docs.sprites.dev/quickstart/)
+2. **Fly.io account** - Sign up at [fly.io](https://fly.io) and authenticate with `fly auth login`
+3. **API key** for one of these providers:
+   - OpenAI API key
+   - Anthropic API key
+   - OpenRouter API key
 
-From `cli/`:
+## Installation
+
+### Option 1: Download the PHAR (Recommended)
 
 ```bash
-composer install
-./openclawpm doctor --fix
-./openclawpm provision pm-agent-test
-./openclawpm verify pm-agent-test
-./openclawpm destroy pm-agent-test
+# Download the latest release
+curl -L -o openclawpm https://github.com/pmprompt/openclawpm/releases/latest/download/openclawpm
+chmod +x openclawpm
+
+# Move to your PATH (optional)
+mv openclawpm /usr/local/bin/
 ```
 
-### Scripts (direct)
+### Option 2: Build from Source
 
+```bash
+# Clone the repository
+git clone https://github.com/pmprompt/openclawpm.git
+cd openclawpm/cli
 
+# Install dependencies
+composer install
 
-1) Install Sprites CLI (see docs): https://docs.sprites.dev/quickstart/
-2) Authenticate with Fly/Sprites.
-3) Copy env example:
+# Make executable
+chmod +x openclawpm
+```
+
+## Quick Start
+
+### 1. Check Your Environment
+
+```bash
+./openclawpm doctor --fix
+```
+
+This verifies that:
+- Sprites CLI is installed
+- You're authenticated with Fly.io
+- Your `.env` file is properly configured
+
+### 2. Set Up Environment Variables
 
 ```bash
 cp .env.example .env
-# fill env vars in your shell, not in git
 ```
 
-4) Provision a test agent:
+Edit `.env` and add your API key (only one needed):
 
 ```bash
-./scripts/provision_sprite.sh --name pm-agent-test
+# Pick one provider:
+OPENAI_API_KEY=sk-...
+# OR
+ANTHROPIC_API_KEY=sk-ant-...
+# OR
+OPENROUTER_API_KEY=sk-or-...
+
+# Optional: specify model (defaults to Claude Sonnet)
+OPENCLAW_MODEL_PRIMARY=sonnet
 ```
 
-5) Destroy it when done:
+**Important**: Never commit your `.env` file to git. It's already in `.gitignore`.
+
+### 3. Create Your PM Agent
 
 ```bash
-./scripts/destroy_sprite.sh --name pm-agent-test
+./openclawpm provision my-pm-agent
 ```
 
-## Required environment variables
+This will:
+- Create a new Sprite on Fly.io
+- Install OpenClaw and configure it
+- Set up the PM skills pack
+- Start the gateway service
 
-See `.env.example`.
+### 4. Start Chatting
 
-## Roadmap (thin slices)
+```bash
+./openclawpm chat my-pm-agent
+```
 
-- [ ] MVP1: provision Sprite + install OpenClaw + install skills + **verify via CLI** (no Telegram)
-- [ ] MVP2: add HTTP bridge service (customer-safe) and route via agent.pmprompt.com
-- [ ] MVP3: context profiles injection (context pack) + artifacts persistence
+You'll enter an interactive chat session with your PM agent. Try asking:
+
+- "Help me write a PRD for a new feature"
+- "What's the difference between OKRs and KPIs?"
+- "Review this user interview transcript and extract insights"
+- "/exit" to quit
+
+### 5. Verify Everything is Working
+
+```bash
+./openclawpm verify my-pm-agent
+```
+
+### 6. Clean Up (When Done)
+
+```bash
+./openclawpm destroy my-pm-agent
+```
+
+## Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `doctor [--fix]` | Check environment and dependencies |
+| `provision <name>` | Create and configure a new PM agent |
+| `chat <name>` | Interactive chat with your agent |
+| `verify <name>` | Verify agent health and configuration |
+| `destroy <name> [--force]` | Remove a PM agent permanently |
+| `reset-sprite-auth [--force]` | Reset Sprites authentication |
+| `welcome` | Display the welcome screen |
+| `list` | Show all available commands |
+
+## How It Works
+
+### Architecture
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│   Your Machine  │────▶│   Sprites CLI    │────▶│   Fly.io Sprite │
+│  (openclawpm)   │     │   (fly/sprite)   │     │  (microVM)      │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                                                          │
+                                                          ▼
+                                                  ┌─────────────────┐
+                                                  │   OpenClaw +    │
+                                                  │   PM Skills     │
+                                                  └─────────────────┘
+```
+
+1. **Local CLI** (`openclawpm`) - Your interface for managing agents
+2. **Sprites** - Fly.io's infrastructure for isolated, persistent environments
+3. **OpenClaw** - AI agent runtime with gateway and skills system
+4. **PM Skills** - Product management workflows from [pmprompt](https://github.com/pmprompt/claude-plugin-product-management)
+
+### Per-User Isolation
+
+Each PM agent runs in its own Sprite with:
+- **Hardware isolation** via microVMs (not just containers)
+- **Persistent storage** that survives restarts
+- **Instant wake** from hibernation (no cold starts)
+- **Per-second billing** - compute is free when idle
+
+## Contributing
+
+We welcome contributions! Here's how to get started:
+
+### Development Setup
+
+```bash
+# Clone the repo
+git clone https://github.com/pmprompt/openclawpm.git
+cd openclawpm
+
+# Install PHP dependencies
+cd cli && composer install
+
+# Run tests
+vendor/bin/pest
+
+# Check code style
+vendor/bin/pint
+```
+
+### Project Structure
+
+```
+openclawpm/
+├── cli/                    # Laravel Zero CLI application
+│   ├── app/Commands/       # CLI commands
+│   ├── app/Support/        # Helper classes
+│   └── tests/              # Pest tests
+├── scripts/                # Bash provisioning scripts
+│   ├── provision_sprite.sh
+│   ├── destroy_sprite.sh
+│   └── lib/sprite_utils.sh
+├── prompts/                # System prompts for agents
+├── skills/                 # Claude skills for development
+│   ├── skill-creator/
+│   └── review-and-release/
+└── AGENTS.md              # Developer documentation
+```
+
+### Development Workflow
+
+1. **Create a feature branch**: `git checkout -b feature/my-feature`
+2. **Make your changes** with tests if applicable
+3. **Run the review-and-release skill**: This will:
+   - Run code quality checks
+   - Execute tests
+   - Update documentation
+   - Create a PR
+   - Merge and tag the release
+
+### Guidelines
+
+- **No secrets** - Never commit API keys, tokens, or private URLs
+- **Idempotent scripts** - Provisioning scripts must be safe to re-run
+- **Small commits** - Prefer reviewable, focused changes
+- **Document env vars** - Add required variables to `.env.example`
+
+## Related Projects
+
+- **[Claude Plugin for Product Management](https://github.com/pmprompt/claude-plugin-product-management)** - The PM skills pack that powers the agent's product management capabilities
+- **[OpenClaw](https://github.com/anthropics/openclaw)** - The AI agent runtime by Anthropic
+- **[Sprites](https://docs.sprites.dev/)** - Persistent, hardware-isolated environments by Fly.io
+
+## Roadmap
+
+- [x] **MVP1**: CLI provisioning, OpenClaw installation, skills setup
+- [ ] **MVP2**: HTTP bridge service for web-based chat interface
+- [ ] **MVP3**: Context profiles and artifact persistence
+- [ ] **Future**: SaaS backend for team collaboration
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/pmprompt/openclawpm/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/pmprompt/openclawpm/discussions)
+- **Documentation**: See `AGENTS.md` for developer docs
 
 ## License
 
-MIT (see `LICENSE`).
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+Made with ❤️ for product managers who want AI superpowers.
