@@ -52,6 +52,21 @@ sprite destroy <name>    # Delete a Sprite and all its data
 - Document required env vars in `.env.example`.
 - Use skills via the skill tool (located in `.agents/skills/`)
 
+## Release Workflow
+
+**IMPORTANT**: Do NOT deploy changes until explicitly instructed to run the review-and-release skill.
+
+When changes are ready for release:
+1. User must explicitly say "run the review-and-release skill" or similar
+2. The review-and-release skill will perform:
+   - Code review and quality checks
+   - Testing
+   - Documentation updates
+   - Git workflow (branch, commit, PR)
+3. Only then should deployment occur
+
+This ensures all changes go through proper review before reaching production.
+
 ## Security
 
 - Treat per-user Sprites as untrusted boundaries.
