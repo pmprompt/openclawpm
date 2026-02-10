@@ -42,11 +42,19 @@ class ProvisionSprite extends Command
         $this->line("   Sprite: {$name}");
         $this->newLine();
 
+        // Gather user context for personalized agent
+        $this->info('👤 Quick setup - tell me about yourself:');
+        $userContext = $this->gatherUserContext();
+        $this->newLine();
+
         // Preflight: local deps + prompts for missing env vars.
         $this->info('📋 Checking dependencies...');
         \App\Support\EnvPreflight::ensureSpriteCliInstalled(fix: true);
         \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true, fix: true);
         $env = \App\Support\EnvPreflight::forProvisioning($repoRoot);
+
+        // Pass user context to provisioning script
+        putenv('USER_CONTEXT_B64='.base64_encode(json_encode($userContext)));
 
         // Do NOT print secrets. Pass env vars via process env instead of inline shell exports.
         foreach ($env as $k => $v) {
@@ -88,6 +96,26 @@ class ProvisionSprite extends Command
         $this->info('✅ Done! Your PM Agent is ready.');
 
         return 0;
+    }
+
+    /**
+     * Gather user context during onboarding.
+     */
+    private function gatherUserContext(): array
+    {
+        $context = [];
+
+        $context['role'] = $this->ask('  Your role (e.g., PM, Engineer, Founder)', 'Product Manager');
+        $context['product'] = $this->ask('  Product/company name', '');
+        $context['stage'] = $this->choice('  Product stage', ['MVP', 'Growth', 'Scale', 'Enterprise'], 1);
+        $context['industry'] = $this->ask('  Industry (optional)', '');
+        $context['focus'] = $this->choice(
+            '  Primary focus',
+            ['B2B SaaS', 'Consumer', 'Internal tools', 'Developer tools', 'Marketplace', 'Other'],
+            0
+        );
+
+        return $context;
     }
 
     /**

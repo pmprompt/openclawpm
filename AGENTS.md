@@ -50,7 +50,7 @@ sprite destroy <name>    # Delete a Sprite and all its data
 - Prefer small, reviewable commits.
 - Keep provider-specific logic behind flags.
 - Document required env vars in `.env.example`.
-- Use the review-and-release skill for PR creation and releases: `/review-and-release`
+- Use skills via the skill tool (located in `.agents/skills/`)
 
 ## Security
 

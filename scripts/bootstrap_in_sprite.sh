@@ -234,11 +234,27 @@ EOF
 
 echo "$SYS_PROMPT_B64" | base64 -d > "$WS/SOUL.md"
 
-cat > "$WS/USER.md" <<'EOF'
+USER_CONTEXT_JSON="$(b64_decode "${USER_CONTEXT_B64:-}")"
+ROLE="$(echo "$USER_CONTEXT_JSON" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("role","Product Manager"))' 2>/dev/null || echo 'Product Manager')"
+PRODUCT="$(echo "$USER_CONTEXT_JSON" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("product",""))' 2>/dev/null || echo '')"
+STAGE="$(echo "$USER_CONTEXT_JSON" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("stage","Growth"))' 2>/dev/null || echo 'Growth')"
+INDUSTRY="$(echo "$USER_CONTEXT_JSON" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("industry",""))' 2>/dev/null || echo '')"
+FOCUS="$(echo "$USER_CONTEXT_JSON" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("focus","B2B SaaS"))' 2>/dev/null || echo 'B2B SaaS')"
+
+cat > "$WS/USER.md" <<EOF
 # USER.md
 
-- **Default ICP:** professional product managers
-- **Focus:** producing shippable artifacts (PRDs, decision memos, shaping pitches)
+- **Role:** ${ROLE}
+- **Product:** ${PRODUCT}
+- **Stage:** ${STAGE}
+- **Industry:** ${INDUSTRY}
+- **Focus:** ${FOCUS}
+
+## Context
+This user works on ${PRODUCT} in the ${FOCUS} space. They are a ${ROLE} at ${STAGE} stage.
+
+## Preferred Artifacts
+PRDs, decision memos, shaping pitches, stakeholder updates
 EOF
 
 # Remove bootstrap file so it doesn't get injected into the system prompt
