@@ -27,11 +27,26 @@ class ResetSpriteAuth extends Command
      */
     public function handle()
     {
+        $this->newLine();
+        $this->info('🔄 Reset Sprites CLI Authentication');
+        $this->newLine();
+
+        $this->warn('This will remove local Sprites configuration files.');
+        $this->line('You will need to re-authenticate with: sprite login');
+        $this->newLine();
+
         \App\Support\EnvPreflight::resetSpriteAuth(
             force: (bool) $this->option('force')
         );
 
-        $this->info('Done. Next: sprite org auth');
+        $this->newLine();
+        $this->info('✅ Sprites auth reset.');
+        $this->newLine();
+        $this->comment('Next steps:');
+        $this->line('  sprite login');
+        $this->line('  ./openclawpm doctor');
+        $this->newLine();
+
         return 0;
     }
 

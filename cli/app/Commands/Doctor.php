@@ -28,28 +28,52 @@ class Doctor extends Command
     public function handle()
     {
         $repoRoot = realpath(__DIR__.'/../../..');
+        $verbose = $this->option('verbose');
 
-        $this->line('Checking local dependencies...');
+        $this->newLine();
+        $this->info('🏥 OpenClaw PM Agent - Environment Check');
+        $this->newLine();
 
         $ok = true;
+
+        // Check 1: Sprites CLI
+        $this->line('📦 Checking Sprites CLI...');
         try {
             \App\Support\EnvPreflight::ensureSpriteCliInstalled(fix: (bool) $this->option('fix'));
-            \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true, fix: (bool) $this->option('fix'));
+            $this->info('   ✓ Sprites CLI installed');
         } catch (\Throwable $e) {
-            $this->error($e->getMessage());
+            $this->error('   ✗ '.$e->getMessage());
             $ok = false;
         }
 
-        // Ensure repo-root .env is ignored if user chooses to persist later.
+        // Check 2: Authentication
+        $this->line('🔐 Checking Sprites authentication...');
+        try {
+            \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true, fix: (bool) $this->option('fix'));
+            $this->info('   ✓ Authenticated');
+        } catch (\Throwable $e) {
+            $this->error('   ✗ '.$e->getMessage());
+            $ok = false;
+        }
+
+        // Check 3: .env ignored
+        $this->line('🔒 Checking .env is gitignored...');
         \App\Support\EnvPreflight::ensureGitignoreHasDotEnvPublic($repoRoot);
+        $this->info('   ✓ .env is protected');
+
+        $this->newLine();
 
         if ($ok) {
-            $this->info('OK: ready to provision.');
-            $this->line('Next: ./openclawpm provision pm-agent-test');
+            $this->info('✅ All checks passed! Ready to provision.');
+            $this->newLine();
+            $this->comment('Next steps:');
+            $this->line('  ./openclawpm provision <sprite-name>');
+
             return 0;
         }
 
-        $this->error('Doctor found issues. Fix them and re-run.');
+        $this->error('❌ Doctor found issues. Fix them and re-run.');
+
         return 1;
     }
 
