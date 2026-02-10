@@ -29,41 +29,100 @@ class ProvisionSprite extends Command
     public function handle()
     {
         $name = (string) $this->argument('name');
+        $verbose = $this->option('verbose');
+
+        // Validate sprite name
+        if (! $this->validateSpriteName($name)) {
+            return 1;
+        }
 
         $repoRoot = realpath(__DIR__.'/../../..');
 
+        $this->info('🚀 OpenClaw PM Agent Provision');
+        $this->line("   Sprite: {$name}");
+        $this->newLine();
+
         // Preflight: local deps + prompts for missing env vars.
+        $this->info('📋 Checking dependencies...');
         \App\Support\EnvPreflight::ensureSpriteCliInstalled(fix: true);
         \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true, fix: true);
         $env = \App\Support\EnvPreflight::forProvisioning($repoRoot);
 
         // Do NOT print secrets. Pass env vars via process env instead of inline shell exports.
         foreach ($env as $k => $v) {
-            if ($v === null || $v === '') continue;
+            if ($v === null || $v === '') {
+                continue;
+            }
             putenv($k.'='.$v);
         }
 
         $cmd = sprintf('bash ../scripts/provision_sprite.sh --name %s', escapeshellarg($name));
-        $this->info('Provisioning...');
+        if ($verbose) {
+            $cmd .= ' --verbose';
+        }
+
         passthru($cmd, $code);
 
         if ($code !== 0) {
-            $this->error("Provision failed with exit code $code");
+            $this->error("\n❌ Provision failed with exit code $code");
+
             return $code;
         }
 
         if (! $this->option('no-verify')) {
+            $this->newLine();
+            $this->info('🔍 Running verification...');
             $verifyCmd = sprintf('bash ../scripts/verify_sprite.sh --name %s', escapeshellarg($name));
-            $this->info("\nRunning: $verifyCmd");
+            if ($verbose) {
+                $verifyCmd .= ' --verbose';
+            }
             passthru($verifyCmd, $vcode);
             if ($vcode !== 0) {
-                $this->error("Verify failed with exit code $vcode");
+                $this->error("\n❌ Verify failed with exit code $vcode");
+
                 return $vcode;
             }
         }
 
-        $this->info("\nDone.");
+        $this->newLine();
+        $this->info('✅ Done! Your PM Agent is ready.');
+
         return 0;
+    }
+
+    /**
+     * Validate sprite name (lowercase alphanumeric and hyphens only - Sprites API requirement).
+     */
+    private function validateSpriteName(string $name): bool
+    {
+        if (empty($name)) {
+            $this->error('❌ Sprite name cannot be empty');
+
+            return false;
+        }
+
+        // Sprites naming convention: lowercase alphanumeric and hyphens only
+        if (! preg_match('/^[a-z0-9-]+$/', $name)) {
+            $this->error('❌ Sprite name must be lowercase alphanumeric with hyphens only');
+            $this->line('   Example: pm-agent-test (NOT pm_agent_test)');
+
+            return false;
+        }
+
+        if (strlen($name) > 63) {
+            $this->error('❌ Sprite name too long (max 63 characters)');
+
+            return false;
+        }
+
+        // Cannot start or end with hyphen
+        if (str_starts_with($name, '-') || str_ends_with($name, '-')) {
+            $this->error('❌ Sprite name cannot start or end with a hyphen');
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
