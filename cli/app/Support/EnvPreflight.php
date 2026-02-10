@@ -4,11 +4,12 @@ namespace App\Support;
 
 use Illuminate\Support\Facades\File;
 use Laravel\Prompts\Prompt;
+
 use function Laravel\Prompts\confirm;
+use function Laravel\Prompts\error;
 use function Laravel\Prompts\password;
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
-use function Laravel\Prompts\error;
 
 class EnvPreflight
 {
@@ -20,19 +21,19 @@ class EnvPreflight
             return;
         }
 
-        $msg = "Sprites CLI (sprite) not found. Install it with:\n  curl -fsSL https://sprites.dev/install.sh | sh\nThen restart your shell (ensure ~/.local/bin is on PATH), and run:\n  sprite org auth";
+        $msg = "CLI not found. Install it with:\n  curl -fsSL https://sprites.dev/install.sh | sh\nThen restart your shell (ensure ~/.local/bin is on PATH), and run:\n  sprite org auth";
 
         if (! $fix) {
             error($msg);
             throw new \RuntimeException('Missing dependency: sprite');
         }
 
-        if (! confirm('Sprites CLI not found. Install it now via the official install script?', default: false)) {
+        if (! confirm('CLI not found. Install it now via the official install script?', default: false)) {
             error($msg);
             throw new \RuntimeException('Missing dependency: sprite');
         }
 
-        \Laravel\Prompts\info('Installing Sprites CLI...');
+        \Laravel\Prompts\info('Installing CLI...');
         $installCode = 0;
         passthru('curl -fsSL https://sprites.dev/install.sh | sh', $installCode);
         if ($installCode !== 0) {
@@ -40,7 +41,7 @@ class EnvPreflight
         }
 
         \Laravel\Prompts\info('Installed. Ensure ~/.local/bin is on your PATH, then re-run this command.');
-        throw new \RuntimeException('Sprites CLI installed; restart shell and run again.');
+        throw new \RuntimeException('CLI installed; restart shell and run again.');
     }
 
     public static function ensureGitignoreHasDotEnvPublic(string $repoRoot): void
@@ -62,16 +63,18 @@ class EnvPreflight
         $existing = array_values(array_filter($candidates, fn ($p) => is_dir($p) || is_file($p)));
 
         if (empty($existing)) {
-            error("No obvious Sprites auth/config paths found. If you're still stuck, run: sprite org auth");
+            error("No auth/config paths found. If you're still stuck, run: sprite org auth");
+
             return;
         }
 
-        \Laravel\Prompts\info("Found Sprites-related paths:\n- ".implode("\n- ", $existing));
+        \Laravel\Prompts\info("Found auth paths:\n- ".implode("\n- ", $existing));
 
         if (! $force) {
-            $ok = confirm('Delete these local paths to reset Sprites auth?', default: false);
+            $ok = confirm('Delete these local paths to reset auth?', default: false);
             if (! $ok) {
                 error('Aborted.');
+
                 return;
             }
         }
@@ -80,18 +83,21 @@ class EnvPreflight
             self::rmrf($path);
         }
 
-        \Laravel\Prompts\info('Removed local Sprites auth/config.');
+        \Laravel\Prompts\info('Removed local auth/config.');
     }
 
     private static function rmrf(string $path): void
     {
         if (is_file($path) || is_link($path)) {
             @unlink($path);
+
             return;
         }
-        if (! is_dir($path)) return;
+        if (! is_dir($path)) {
+            return;
+        }
 
-        $items = array_diff(scandir($path) ?: [], ['.','..']);
+        $items = array_diff(scandir($path) ?: [], ['.', '..']);
         foreach ($items as $item) {
             self::rmrf($path.'/'.$item);
         }
@@ -151,64 +157,42 @@ class EnvPreflight
             }
         }
 
-        // Model selection (short names w/ magic mapping)
+        // Model selection - load from models.json
         if ($env['OPENCLAW_MODEL_PRIMARY'] === null) {
             $provider = ! empty($env['OPENROUTER_API_KEY']) ? 'openrouter'
                 : (! empty($env['ANTHROPIC_API_KEY']) ? 'anthropic'
                 : (! empty($env['OPENAI_API_KEY']) ? 'openai' : 'unknown'));
 
-            $picked = null;
-            if ($provider === 'openrouter') {
+            // Load curated models from models.json
+            $modelsConfig = self::loadModelsConfig($repoRoot);
+            $providerModels = $modelsConfig[$provider] ?? [];
+
+            if (! empty($providerModels)) {
+                echo PHP_EOL;
+                \Laravel\Prompts\info('Available models for '.ucfirst($provider).':');
+                echo PHP_EOL;
+
+                $options = [];
+                foreach ($providerModels as $modelId => $modelData) {
+                    $label = sprintf(
+                        '%s — %s [%s, %s]',
+                        $modelData['name'],
+                        $modelData['description'],
+                        $modelData['speed'],
+                        $modelData['cost']
+                    );
+                    $options[$modelId] = $label;
+                }
+                $options['custom'] = 'Custom model ID…';
+
                 $picked = select(
-                    label: 'Pick a primary model (OpenRouter)',
-                    options: [
-                        'auto' => 'Auto (recommended) — OpenRouter picks a cost-effective model',
-                        'sonnet' => 'Claude Sonnet 4.5 (quality default)',
-                        'haiku' => 'Claude Haiku 3.5 (cheap + fast)',
-                        'deepseek' => 'DeepSeek Chat',
-                        'gemini' => 'Gemini Pro 1.5',
-                        'kimi' => 'Kimi K2.5',
-                        'custom' => 'Custom…',
-                    ],
-                    default: 'auto'
+                    label: 'Pick a primary model',
+                    options: $options,
+                    default: array_key_first($providerModels)
                 );
-            } elseif ($provider === 'anthropic') {
-                $picked = select(
-                    label: 'Pick a primary model (Anthropic)',
-                    options: [
-                        'sonnet' => 'Sonnet (recommended)',
-                        'haiku' => 'Haiku (cheap + fast)',
-                        'custom' => 'Custom…',
-                    ],
-                    default: 'sonnet'
-                );
-            } elseif ($provider === 'openai') {
-                $picked = select(
-                    label: 'Pick a primary model (OpenAI)',
-                    options: [
-                        'codex' => 'Codex GPT-5.2 (default)',
-                        'custom' => 'Custom…',
-                    ],
-                    default: 'codex'
-                );
+            } else {
+                $picked = 'custom';
             }
-
-            $map = [
-                // OpenRouter
-                'openrouter:auto' => 'openrouter/openrouter/auto',
-                'openrouter:sonnet' => 'openrouter/anthropic/claude-sonnet-4.5',
-                'openrouter:haiku' => 'openrouter/anthropic/claude-haiku-3.5',
-                'openrouter:deepseek' => 'openrouter/deepseek/deepseek-chat',
-                'openrouter:gemini' => 'openrouter/google/gemini-pro-1.5',
-                'openrouter:kimi' => 'openrouter/moonshotai/kimi-k2.5',
-
-                // Anthropic
-                'anthropic:sonnet' => 'sonnet',
-                'anthropic:haiku' => 'anthropic/claude-haiku-4-5',
-
-                // OpenAI
-                'openai:codex' => 'openai-codex/gpt-5.2',
-            ];
 
             if ($picked === 'custom') {
                 $env['OPENCLAW_MODEL_PRIMARY'] = text(
@@ -217,8 +201,8 @@ class EnvPreflight
                         ? 'openrouter/<author>/<slug> (e.g. openrouter/openrouter/auto)'
                         : 'model id or alias (e.g. sonnet)'
                 );
-            } elseif ($picked !== null) {
-                $env['OPENCLAW_MODEL_PRIMARY'] = $map[$provider.':'.$picked] ?? null;
+            } else {
+                $env['OPENCLAW_MODEL_PRIMARY'] = $picked;
             }
 
             if (! empty($env['OPENCLAW_MODEL_PRIMARY'])) {
@@ -248,14 +232,14 @@ class EnvPreflight
         // First, do a quick non-interactive probe so we can show accurate guidance.
         $probeOut = shell_exec('sprite list 2>&1') ?? '';
         if (stripos($probeOut, 'no organizations configured') !== false || stripos($probeOut, 'sprite login') !== false) {
-            $msg = "Sprites CLI is not authenticated (no org configured). Run:\n  sprite login\nThen run:\n  sprite list";
+            $msg = "Not authenticated. Run:\n  sprite login";
 
-            if ($fix && confirm('Sprites needs login. Run `sprite login` now? (opens browser)', default: true)) {
+            if ($fix && confirm('Authentication required. Run `sprite login` now? (opens browser)', default: true)) {
                 $code = 0;
                 passthru('sprite login', $code);
             } else {
                 error($msg);
-                throw new \RuntimeException('Sprites CLI not authenticated');
+                throw new \RuntimeException('Not authenticated');
             }
         }
 
@@ -265,15 +249,15 @@ class EnvPreflight
 
         $code = 0;
         if ($interactive) {
-            \Laravel\Prompts\info('Checking Sprites auth (you may be prompted to pick an org once)...');
+            \Laravel\Prompts\info('Checking auth (you may be prompted to pick an org once)...');
             passthru($cmd, $code);
         } else {
             @passthru($cmd, $code);
         }
 
         if ($code !== 0) {
-            error("Sprites CLI isn't authenticated yet. If this is a fresh setup run:\n  sprite login\nThen run:\n  sprite list\n(and pick an org if prompted)");
-            throw new \RuntimeException('Sprites CLI not authenticated');
+            error("Not authenticated. Run:\n  sprite login\n(and pick an org if prompted)");
+            throw new \RuntimeException('Not authenticated');
         }
     }
 
@@ -283,10 +267,11 @@ class EnvPreflight
         $line = ".env\n";
         if (! File::exists($path)) {
             File::put($path, $line);
+
             return;
         }
         $contents = File::get($path);
-        if (strpos($contents, ".env") === false) {
+        if (strpos($contents, '.env') === false) {
             File::append($path, "\n.env\n");
         }
     }
@@ -298,9 +283,11 @@ class EnvPreflight
         // Only write keys we manage. Keep it simple.
         $lines = [];
         $lines[] = '# Generated by openclawpm CLI';
-        foreach (['OPENAI_API_KEY','ANTHROPIC_API_KEY','OPENROUTER_API_KEY','OPENCLAW_MODEL_PRIMARY','PM_SKILLS_REPO','PM_SKILLS_REF'] as $k) {
+        foreach (['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'OPENROUTER_API_KEY', 'OPENCLAW_MODEL_PRIMARY', 'PM_SKILLS_REPO', 'PM_SKILLS_REF'] as $k) {
             $v = $env[$k] ?? '';
-            if ($v === null) $v = '';
+            if ($v === null) {
+                $v = '';
+            }
             // basic escaping: wrap in quotes if spaces
             if (preg_match('/\s/', (string) $v)) {
                 $v = '"'.str_replace('"', '\\"', (string) $v).'"';
@@ -309,5 +296,29 @@ class EnvPreflight
         }
         $lines[] = '';
         File::put($path, implode("\n", $lines));
+    }
+
+    /**
+     * Load models configuration from models.json
+     */
+    private static function loadModelsConfig(string $repoRoot): array
+    {
+        $configPath = rtrim($repoRoot, '/').'/cli/config/models.json';
+
+        if (! file_exists($configPath)) {
+            return [];
+        }
+
+        $content = file_get_contents($configPath);
+        $data = json_decode($content, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return [];
+        }
+
+        // Remove metadata keys
+        unset($data['_comment']);
+
+        return $data;
     }
 }

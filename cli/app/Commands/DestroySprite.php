@@ -13,7 +13,7 @@ class DestroySprite extends Command
      * @var string
      */
     protected $signature = 'destroy
-                            {name : Sprite name}
+                            {name : Agent name}
                             {--force : Skip confirmation prompt}';
 
     /**
@@ -21,7 +21,7 @@ class DestroySprite extends Command
      *
      * @var string
      */
-    protected $description = 'Destroy a Sprite by name (wraps scripts/destroy_sprite.sh).';
+    protected $description = 'Destroy an Agent by name (wraps scripts/destroy_sprite.sh).';
 
     /**
      * Execute the console command.
@@ -39,13 +39,12 @@ class DestroySprite extends Command
 
         $this->newLine();
         $this->info('🗑️  Destroy OpenClaw PM Agent');
-        $this->line("   Sprite: {$name}");
         $this->newLine();
 
         // Confirmation prompt
         if (! $force) {
             $confirmed = \Laravel\Prompts\confirm(
-                label: 'Are you sure you want to permanently destroy this sprite?',
+                label: "Permanently destroy '{$name}'?",
                 default: false
             );
 
@@ -56,7 +55,7 @@ class DestroySprite extends Command
             }
         }
 
-        \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: true);
+        \App\Support\EnvPreflight::ensureSpriteCliAuthenticated(interactive: false);
 
         $cmd = sprintf('bash ../scripts/destroy_sprite.sh --name %s --force', escapeshellarg($name));
         if ($verbose) {
@@ -67,43 +66,43 @@ class DestroySprite extends Command
 
         if ($code === 0) {
             $this->newLine();
-            $this->info('✅ Sprite destroyed successfully.');
+            $this->info('✅ Agent destroyed successfully.');
         } else {
             $this->newLine();
-            $this->error('❌ Failed to destroy sprite.');
+            $this->error('❌ Failed to destroy agent.');
         }
 
         return $code;
     }
 
     /**
-     * Validate sprite name (lowercase alphanumeric and hyphens only - Sprites API requirement).
+     * Validate agent name (lowercase alphanumeric and hyphens only).
      */
     private function validateSpriteName(string $name): bool
     {
         if (empty($name)) {
-            $this->error('❌ Sprite name cannot be empty');
+            $this->error('❌ Agent name cannot be empty');
 
             return false;
         }
 
-        // Sprites naming convention: lowercase alphanumeric and hyphens only
+        // Agent naming convention: lowercase alphanumeric and hyphens only
         if (! preg_match('/^[a-z0-9-]+$/', $name)) {
-            $this->error('❌ Sprite name must be lowercase alphanumeric with hyphens only');
+            $this->error('❌ Agent name must be lowercase alphanumeric with hyphens only');
             $this->line('   Example: pm-agent-test (NOT pm_agent_test)');
 
             return false;
         }
 
         if (strlen($name) > 63) {
-            $this->error('❌ Sprite name too long (max 63 characters)');
+            $this->error('❌ Agent name too long (max 63 characters)');
 
             return false;
         }
 
         // Cannot start or end with hyphen
         if (str_starts_with($name, '-') || str_ends_with($name, '-')) {
-            $this->error('❌ Sprite name cannot start or end with a hyphen');
+            $this->error('❌ Agent name cannot start or end with a hyphen');
 
             return false;
         }

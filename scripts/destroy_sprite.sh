@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Destroy a Sprite by name.
+# Destroy an Agent by name.
 # Usage:
 #   ./scripts/destroy_sprite.sh --name pm-agent-test [--force]
 
@@ -24,19 +24,11 @@ if [[ -z "$NAME" ]]; then
     exit 1
 fi
 
-# Validate sprite name
+# Validate agent name
 validate_sprite_name "$NAME" || exit 1
 
-if [[ "$FORCE" != true ]]; then
-    echo "⚠️  This will permanently destroy sprite: $NAME"
-    read -p "Are you sure? [y/N] " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Aborted."
-        exit 0
-    fi
-fi
+# Note: Confirmation is handled by the PHP CLI
 
-echo "🗑️  Destroying sprite: $NAME"
+echo "🗑️  Destroying agent: $NAME"
 sprite destroy "$NAME"
-echo "✅ Sprite destroyed: $NAME"
+echo "✅ Agent destroyed: $NAME"
