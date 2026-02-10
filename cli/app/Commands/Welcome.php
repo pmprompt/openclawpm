@@ -33,6 +33,9 @@ class Welcome extends Command
         $this->line('  <fg=cyan;options=bold>╚══════════════════════════════════════════════╝</>');
         $this->newLine();
 
+        // Show active agents
+        $this->showActiveAgents();
+
         $this->info('Quick Start');
         $this->newLine();
 
@@ -60,6 +63,39 @@ class Welcome extends Command
         $this->newLine();
 
         return 0;
+    }
+
+    /**
+     * Display active agents (sprites).
+     */
+    private function showActiveAgents(): void
+    {
+        $output = shell_exec('sprite list 2>/dev/null');
+
+        if (empty($output)) {
+            $this->line('  <fg=gray>No active agents. Run `./openclawpm provision <name>` to create one.</>');
+            $this->newLine();
+
+            return;
+        }
+
+        $agents = array_filter(array_map('trim', explode("\n", $output)));
+
+        if (empty($agents)) {
+            $this->line('  <fg=gray>No active agents. Run `./openclawpm provision <name>` to create one.</>');
+            $this->newLine();
+
+            return;
+        }
+
+        $this->info('Active Agents');
+        $this->newLine();
+
+        foreach ($agents as $agent) {
+            $this->line(sprintf('  <fg=green>●</> <fg=white>%s</>', $agent));
+        }
+
+        $this->newLine();
     }
 
     /**

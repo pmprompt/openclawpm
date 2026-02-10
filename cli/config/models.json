@@ -1,65 +1,72 @@
 {
-  "_comment": "Curated models for OpenClaw PM Agent. You can add custom models here.",
-  "anthropic": {
-    "opus": {
-      "name": "Claude 4 Opus",
-      "provider": "anthropic",
-      "description": "Best reasoning, slower",
-      "speed": "Slow",
-      "cost": "High"
+    "_comment": "Curated models for OpenClaw PM Agent (updated Feb 2026). Latest frontier releases prioritized for reasoning, agents, coding, and PM workflows.",
+    "anthropic": {
+        "opus-4-6": {
+            "name": "Claude Opus 4.6",
+            "provider": "anthropic",
+            "description": "Latest flagship - best overall reasoning, agentic tasks, coding/debugging, 1M context beta. Ideal for complex PM planning.",
+            "speed": "Slow",
+            "cost": "High"
+        },
+        "sonnet-4-5": {
+            "name": "Claude Sonnet 4.5",
+            "provider": "anthropic",
+            "description": "Balanced successor - excellent for most PM/agent tasks, strong reliability and speed trade-off.",
+            "speed": "Medium",
+            "cost": "Medium"
+        },
+        "haiku-4-5": {
+            "name": "Claude Haiku 4.5",
+            "provider": "anthropic",
+            "description": "Fast and cheap option in the family - great for quick iterations and lighter PM work.",
+            "speed": "Fast",
+            "cost": "Low"
+        }
     },
-    "sonnet": {
-      "name": "Claude 4 Sonnet",
-      "provider": "anthropic",
-      "description": "Balanced - good for most tasks",
-      "speed": "Medium",
-      "cost": "Medium"
+    "openai": {
+        "gpt-5-3-codex": {
+            "name": "GPT-5.3-Codex",
+            "provider": "openai",
+            "description": "Latest agentic coding/reasoning model (Feb 2026) - fast improvements, tool use, long tasks. Top for PM + dev workflows.",
+            "speed": "Medium-Fast",
+            "cost": "Medium"
+        },
+        "gpt-5-2": {
+            "name": "GPT-5.2",
+            "provider": "openai",
+            "description": "Strong generalist predecessor - excellent benchmarks, low hallucination, versatile for PM needs.",
+            "speed": "Medium",
+            "cost": "Medium"
+        }
     },
-    "haiku": {
-      "name": "Claude 4 Haiku",
-      "provider": "anthropic",
-      "description": "Fast, cheap",
-      "speed": "Fast",
-      "cost": "Low"
+    "openrouter": {
+        "openrouter/moonshotai/kimi-k2.5": {
+            "name": "Kimi K2.5",
+            "provider": "openrouter",
+            "description": "Very fast, low-cost, strong PM/coding/agent performance (MoE + agent swarms).",
+            "speed": "Fast",
+            "cost": "Low"
+        },
+        "openrouter/google/gemini-3-flash": {
+            "name": "Gemini 3 Flash",
+            "provider": "openrouter",
+            "description": "Latest fast variant - frontier speed + intelligence, multimodal, huge context. Great value for PM scale.",
+            "speed": "Very Fast",
+            "cost": "Low"
+        },
+        "openrouter/google/gemini-3-pro": {
+            "name": "Gemini 3 Pro",
+            "provider": "openrouter",
+            "description": "Top-tier reasoning/context king - often leads real-world PM/coding evals, 1M+ tokens.",
+            "speed": "Medium",
+            "cost": "Medium"
+        },
+        "openrouter/anthropic/claude-opus-4-6": {
+            "name": "Claude Opus 4.6 (via OpenRouter)",
+            "provider": "openrouter",
+            "description": "Access latest Anthropic flagship through OpenRouter for flexibility.",
+            "speed": "Slow",
+            "cost": "High"
+        }
     }
-  },
-  "openai": {
-    "gpt-5": {
-      "name": "GPT-5",
-      "provider": "openai",
-      "description": "Latest OpenAI model",
-      "speed": "Medium",
-      "cost": "Medium"
-    },
-    "gpt-5-nano": {
-      "name": "GPT-5 Nano",
-      "provider": "openai",
-      "description": "Fast, cheap, decent quality",
-      "speed": "Fast",
-      "cost": "Low"
-    }
-  },
-  "openrouter": {
-    "openrouter/moonshotai/kimi-k2.5": {
-      "name": "Kimi K2.5",
-      "provider": "openrouter",
-      "description": "Fast, cheap, great for PM work",
-      "speed": "Fast",
-      "cost": "Low"
-    },
-    "openrouter/google/gemini-2.0-flash": {
-      "name": "Gemini 2.0 Flash",
-      "provider": "openrouter",
-      "description": "Very fast, cost-effective",
-      "speed": "Very Fast",
-      "cost": "Low"
-    },
-    "openrouter/openai/gpt-5": {
-      "name": "GPT-5 (via OpenRouter)",
-      "provider": "openrouter",
-      "description": "Access GPT-5 through OpenRouter",
-      "speed": "Medium",
-      "cost": "Medium"
-    }
-  }
 }

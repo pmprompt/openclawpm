@@ -55,6 +55,10 @@ class Chat extends Command
         }
 
         $this->renderHeader($name);
+
+        // Quick warmup to reduce first-message latency
+        $this->warmupSprite($name);
+
         $this->renderWelcomeMessage();
 
         while (true) {
@@ -113,6 +117,26 @@ class Chat extends Command
         $this->newLine();
     }
 
+    private function warmupSprite(string $name): void
+    {
+        // Show warming up message
+        $this->output->write('  <fg=gray>Warming up...</>');
+
+        $cmd = sprintf('sprite exec -s %s -- echo "ok" 2>/dev/null', escapeshellarg($name));
+        $start = microtime(true);
+        exec($cmd, $output, $code);
+        $elapsed = round(microtime(true) - $start, 1);
+
+        // Clear the warming up message
+        $this->output->write("\r\033[K");
+
+        if ($code === 0) {
+            // Show ready status briefly
+            $this->line("  <fg=green>●</> Ready ({$elapsed}s)");
+            $this->newLine();
+        }
+    }
+
     private function showCopyHint(): void
     {
         if (! $this->hintShown && $this->lastResponse !== null) {
@@ -161,7 +185,6 @@ class Chat extends Command
         bool $passthru,
         bool $debug
     ): void {
-        $this->resetThinkingState();
         $msgB64 = base64_encode($message);
         $script = $this->getBashScript();
         $cmd = sprintf('sprite exec -s %s bash -s', escapeshellarg($name));
@@ -258,12 +281,85 @@ class Chat extends Command
         fclose($pipes[2]);
 
         $code = proc_close($proc);
+        $totalTime = microtime(true) - $start;
 
         return [
             'stdout' => trim((string) $stdout),
             'stderr' => trim((string) $stderr),
             'code' => $code,
+            'time' => $totalTime,
         ];
+    }
+
+    private function executeStreaming(
+        string $cmd,
+        string $msgB64,
+        string $sessionId,
+        string $thinking,
+        int $timeout,
+        string $script
+    ): void {
+        // Show thinking indicator
+        $this->renderThinking();
+
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $proc = proc_open($cmd, $descriptors, $pipes);
+        if (! is_resource($proc)) {
+            $this->clearThinking();
+            $this->error('Failed to start sprite exec');
+
+            return;
+        }
+
+        fwrite($pipes[0], 'export MSG_B64='.escapeshellarg($msgB64)."\n");
+        fwrite($pipes[0], 'export SESSION_ID='.escapeshellarg($sessionId)."\n");
+        fwrite($pipes[0], 'export THINKING='.escapeshellarg($thinking)."\n");
+        fwrite($pipes[0], 'export TIMEOUT='.escapeshellarg((string) $timeout)."\n");
+        fwrite($pipes[0], $script."\n");
+        fclose($pipes[0]);
+
+        // Wait for process with spinner
+        $start = microtime(true);
+        while (true) {
+            $st = proc_get_status($proc);
+            if (! $st['running']) {
+                break;
+            }
+            $elapsed = (int) floor(microtime(true) - $start);
+            $this->renderThinking($elapsed);
+            usleep(100_000);
+        }
+
+        $this->clearThinking();
+
+        // Read full output
+        $stdout = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($proc);
+
+        // Render agent response
+        $stdout = trim((string) $stdout);
+        if ($stdout !== '') {
+            $data = json_decode($stdout, true);
+            if ($data && isset($data['payloads'][0]['text'])) {
+                $text = $data['payloads'][0]['text'];
+                $this->lastResponseRaw = $text;
+                $this->lastResponse = $text;
+                $this->renderAgentMessage($text);
+                $this->showCopyHint();
+            } else {
+                $this->lastResponseRaw = $stdout;
+                $this->lastResponse = $stdout;
+                $this->renderAgentMessage($stdout);
+                $this->showCopyHint();
+            }
+        }
     }
 
     private function renderThinking(int $elapsed = 0): void
@@ -299,6 +395,7 @@ class Chat extends Command
         $stdout = $result['stdout'] ?? '';
         $stderr = $result['stderr'] ?? '';
         $code = $result['code'] ?? 0;
+        $time = $result['time'] ?? 0;
 
         if ($stdout !== '') {
             $data = json_decode($stdout, true);
@@ -309,8 +406,10 @@ class Chat extends Command
                 $this->renderAgentMessage($text);
                 $this->showCopyHint();
 
-                if ($debug && isset($data['meta'])) {
-                    $this->renderDebugInfo($data['meta']);
+                if ($debug) {
+                    $meta = $data['meta'] ?? [];
+                    $meta['_total_time'] = round($time, 2);
+                    $this->renderDebugInfo($meta);
                 }
             } else {
                 $this->lastResponseRaw = $stdout;
@@ -626,6 +725,9 @@ class Chat extends Command
         }
         if (isset($meta['durationMs'])) {
             $this->line('  <fg=gray>Duration: '.round($meta['durationMs'] / 1000, 1).'s</>');
+        }
+        if (isset($meta['_total_time'])) {
+            $this->line('  <fg=gray>Total: '.$meta['_total_time'].'s</>');
         }
     }
 

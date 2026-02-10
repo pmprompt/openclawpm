@@ -14,8 +14,8 @@ This skill performs a complete review-and-release cycle:
 2. **Code review** - Quality checks, security review, auto-fixes
 3. **Testing** - Run Pest tests with smart caching
 4. **Documentation** - Update AGENTS.md, README.md, CHANGELOG.md
-5. **Git workflow** - Commit, push, create/update PR
-6. **Release** - Approve, merge, tag (unless `--review-only`)
+5. **Git workflow** - Single clean commit, push, create/update PR
+6. **Release** - Approve, squash merge, tag (unless `--review-only`)
 
 ## Execution Flow
 
@@ -33,6 +33,7 @@ Phases execute in order:
 - `--review-only` - Stop after Phase 5 (create PR but don't merge/release)
 - `--skip-tests` - Skip Phase 3 entirely
 - `--dry-run` - Preview changes without executing
+- `--separate-commits` - Create separate commits for code and docs (default: single commit)
 
 ## Phase 1: Branch Validation
 
@@ -192,14 +193,25 @@ cd cli && vendor/bin/pest
 ## Phase 5: Git Workflow
 
 ### 5.1 Stage and Commit
+
+**Default (single commit for clean squashing):**
 ```bash
 git add -A
-git commit -m "review: {description}"
+git commit -m "feat: {description}
+
+- Code review and auto-fixes applied
+- Documentation updated as needed
+- Tests passing
+- Ready for release"
 ```
 
-Separate docs commit if updated:
+**Separate commits (if --separate-commits flag):**
 ```bash
 git add -A
+git commit -m "feat: {description}"
+
+# Stage only docs changes if they exist
+git add AGENTS.md README.md CHANGELOG.md .env.example
 git commit -m "docs: update for {feature}"
 ```
 
@@ -238,6 +250,8 @@ Abort if failing.
 gh pr review <number> --approve
 gh pr merge <number> --squash --delete-branch
 ```
+
+**Note:** `--squash` ensures all commits in the PR are merged into a single clean commit on main branch, preventing WIP commit clutter in git history.
 
 ### 6.4 Tag Release
 ```bash
@@ -285,6 +299,11 @@ Complete when:
 ### Skip Tests
 ```
 /review-and-release --skip-tests
+```
+
+### Separate Commits
+```
+/review-and-release --separate-commits
 ```
 
 ### Dry Run
