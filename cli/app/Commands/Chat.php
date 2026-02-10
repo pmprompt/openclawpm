@@ -122,19 +122,51 @@ class Chat extends Command
         // Show warming up message
         $this->output->write('  <fg=gray>Warming up...</>');
 
+        // Step 1: Wake the VM
         $cmd = sprintf('sprite exec -s %s -- echo "ok" 2>/dev/null', escapeshellarg($name));
         $start = microtime(true);
         exec($cmd, $output, $code);
+
+        if ($code !== 0) {
+            $this->output->write("\r\033[K");
+            $this->warn('  ⚠️  Agent wake failed');
+
+            return;
+        }
+
+        // Step 2: Initialize OpenClaw agent (forces skill loading, session init, etc)
+        // Use a lightweight command with short timeout - we just need init, not a response
+        $initScript = <<<'BASH'
+set -euo pipefail
+NPM_BIN="$(npm bin -g 2>/dev/null || true)"
+NPM_PREFIX="$(npm config get prefix 2>/dev/null || true)"
+if [[ -n "$NPM_BIN" && -d "$NPM_BIN" ]]; then export PATH="$NPM_BIN:$PATH"; fi
+if [[ -n "$NPM_PREFIX" && -d "$NPM_PREFIX/bin" ]]; then export PATH="$NPM_PREFIX/bin:$PATH"; fi
+if [[ -d '/.sprite/languages/node/nvm/versions/node' ]]; then
+    NODE_BIN_DIR="$(find /.sprite/languages/node/nvm/versions/node -name 'bin' -type d 2>/dev/null | head -1 || true)"
+    [[ -n "$NODE_BIN_DIR" ]] && export PATH="$NODE_BIN_DIR:$PATH"
+fi
+export PATH="$HOME/.local/bin:$PATH"
+hash -r
+
+# Initialize agent (exits fast, just triggers OpenClaw init)
+timeout 3 openclaw agent --local --session-id warmup --thinking off --timeout 3 --message "init" 2>/dev/null || true
+BASH;
+
+        $cmd2 = sprintf('sprite exec -s %s bash -c %s 2>/dev/null',
+            escapeshellarg($name),
+            escapeshellarg($initScript)
+        );
+        exec($cmd2, $output2, $code2);
+
         $elapsed = round(microtime(true) - $start, 1);
 
         // Clear the warming up message
         $this->output->write("\r\033[K");
 
-        if ($code === 0) {
-            // Show ready status briefly
-            $this->line("  <fg=green>●</> Ready ({$elapsed}s)");
-            $this->newLine();
-        }
+        // Show ready status
+        $this->line("  <fg=green>●</> Ready ({$elapsed}s)");
+        $this->newLine();
     }
 
     private function showCopyHint(): void
