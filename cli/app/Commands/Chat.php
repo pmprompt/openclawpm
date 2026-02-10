@@ -36,7 +36,7 @@ class Chat extends Command
                             {--debug : Print extra diagnostics when a turn returns no output}
                             {--passthru : Do not capture stdout/stderr; stream sprite output directly}';
 
-    protected $description = 'Chat with your PM Agent (first message uses minimal thinking for speed)';
+    protected $description = 'Chat with your PM Agent (optimized: background warmup + smart thinking levels)';
 
     public function handle(): int
     {
@@ -70,8 +70,8 @@ class Chat extends Command
 
         $this->renderWelcomeMessage();
 
-        // Show initialization status
-        $this->line('  <fg=gray>● Initializing session...</>');
+        // Show initialization status (might complete before first message if VM stays awake)
+        $this->line('  <fg=gray>● Preparing session... (runs in background)</>');
         $this->newLine();
 
         while (true) {
@@ -185,6 +185,7 @@ BASH;
     private function startBackgroundSessionInit(string $name, string $sessionId): void
     {
         // Start background process to initialize the session while user reads welcome message
+        // This is best-effort - if it dies, first message will do sync warmup
         $initScript = <<<'BASH'
 set -euo pipefail
 NPM_BIN="$(npm bin -g 2>/dev/null || true)"
@@ -198,7 +199,8 @@ fi
 export PATH="$HOME/.local/bin:$PATH"
 hash -r
 
-# Initialize session in background (lightweight message to trigger skill/model loading)
+# Initialize session in background (triggers skill loading, session init, etc)
+# Set timeout to 30s, but it's a background process
 openclaw agent --local \
   --session-id "$SESSION_ID" \
   --thinking minimal \
@@ -214,6 +216,57 @@ BASH;
 
         putenv('SESSION_ID='.$sessionId);
         $this->sessionInitPid = exec($cmd);
+    }
+
+    private function isBackgroundInitAlive(): bool
+    {
+        if ($this->sessionInitPid === null || $this->sessionInitPid === '') {
+            return false;
+        }
+
+        // Check if process is still running
+        exec("ps -p {$this->sessionInitPid} > /dev/null 2>&1", $_, $code);
+
+        return $code === 0;
+    }
+
+    private function syncPreMessageWarmup(string $name, string $sessionId): void
+    {
+        // Do a quick synchronous warmup before the first message
+        // Show user what's happening
+        $this->line('  <fg=gray>● Warming session...</>');
+
+        $warmupScript = <<<'BASH'
+set -euo pipefail
+NPM_BIN="$(npm bin -g 2>/dev/null || true)"
+NPM_PREFIX="$(npm config get prefix 2>/dev/null || true)"
+if [[ -n "$NPM_BIN" && -d "$NPM_BIN" ]]; then export PATH="$NPM_BIN:$PATH"; fi
+if [[ -n "$NPM_PREFIX" && -d "$NPM_PREFIX/bin" ]]; then export PATH="$NPM_PREFIX/bin:$PATH"; fi
+if [[ -d '/.sprite/languages/node/nvm/versions/node' ]]; then
+    NODE_BIN_DIR="$(find /.sprite/languages/node/nvm/versions/node -name 'bin' -type d 2>/dev/null | head -1 || true)"
+    [[ -n "$NODE_BIN_DIR" ]] && export PATH="$NODE_BIN_DIR:$PATH"
+fi
+export PATH="$HOME/.local/bin:$PATH"
+hash -r
+
+# Quick warmup to prepare the session
+openclaw agent --local \
+  --session-id "$SESSION_ID" \
+  --thinking minimal \
+  --timeout 5 \
+  --message "warm" > /dev/null 2>&1 || true
+BASH;
+
+        $cmd = sprintf('sprite exec -s %s bash -c %s',
+            escapeshellarg($name),
+            escapeshellarg($warmupScript)
+        );
+
+        putenv('SESSION_ID='.$sessionId);
+        exec($cmd);
+
+        // Clear the warmup message
+        $this->output->write("\r\033[K");
     }
 
     private function showCopyHint(): void
@@ -265,6 +318,24 @@ BASH;
     ): void {
         // Determine thinking level: minimal for first message, user preference for rest of session
         $thinking = $this->isFirstMessage ? 'minimal' : $this->userThinkingPreference;
+
+        // If it's the first message and background init might still be running, give it a moment
+        if ($this->isFirstMessage && $this->sessionInitPid !== null) {
+            // Check if background process is still alive
+            $isAlive = $this->isBackgroundInitAlive();
+
+            if ($isAlive) {
+                // Give it 3 more seconds to complete
+                sleep(3);
+                // Double-check if it completed
+                $isAlive = $this->isBackgroundInitAlive();
+            }
+
+            if (! $isAlive) {
+                // Background process died (VM slept), do synchronous pre-message warmup
+                $this->syncPreMessageWarmup($name, $sessionId);
+            }
+        }
 
         $msgB64 = base64_encode($message);
         $script = $this->getBashScript();
