@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Warmup now initializes OpenClaw agent** - Previous warmup only woke the VM (1.7s) but OpenClaw init happened on first chat (20s). Now warmup runs `openclaw agent --local` to pre-initialize sessions, skills, and model client, making first chat instant.
+- **Warmup command** - Added `--init` flag for full agent initialization (default: verify only, `--ping`: VM only, `--init`: full init)
+
 ### Added
 
 - **Skills Framework**: Added Claude skills support with skill-creator and review-and-release skills
