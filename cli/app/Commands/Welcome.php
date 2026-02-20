@@ -27,10 +27,10 @@ class Welcome extends Command
     public function handle()
     {
         $this->newLine();
-        $this->line('  <fg=cyan>┌────────────────────────────────────────────────┐</>');
-        $this->line('  <fg=cyan>│</>  <fg=white;options=bold>OpenClaw PM Agent</>                              <fg=cyan>│</>');
-        $this->line('  <fg=cyan>│</>  <fg=gray>Product management AI for every PM</>           <fg=cyan>│</>');
-        $this->line('  <fg=cyan>└────────────────────────────────────────────────┘</>');
+        $this->line('  <fg=#1a4d2e>================================================</>');
+        $this->line('  <fg=#1a4d2e>||</>  <fg=white;options=bold>OpenClaw PM Agent</>                            <fg=#1a4d2e>||</>');
+        $this->line('  <fg=#1a4d2e>||</>  <fg=gray>Product management AI for every PM</>         <fg=#1a4d2e>||</>');
+        $this->line('  <fg=#1a4d2e>================================================</>');
         $this->newLine();
 
         // Show active agents
