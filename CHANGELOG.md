@@ -55,6 +55,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Improved
 
+- **Welcome Screen UI** - Cleaner pixel art border using single-line box-drawing characters and removed bold styling for better readability
+- **Quick Start Commands** - Added `update` command to the welcome screen quick start list
 - **Code Quality**: Applied Laravel Pint code style fixes across all PHP files
 - **Documentation**:
   - Added skill usage instructions to AGENTS.md

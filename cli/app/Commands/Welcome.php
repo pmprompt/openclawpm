@@ -27,10 +27,10 @@ class Welcome extends Command
     public function handle()
     {
         $this->newLine();
-        $this->line('  <fg=cyan;options=bold>╔══════════════════════════════════════════════╗</>');
-        $this->line('  <fg=cyan;options=bold>║</>  <fg=white;options=bold>OpenClaw PM Agent</>                            <fg=cyan;options=bold>║</>');
-        $this->line('  <fg=cyan;options=bold>║</>  <fg=gray>Product management AI for every PM</>         <fg=cyan;options=bold>║</>');
-        $this->line('  <fg=cyan;options=bold>╚══════════════════════════════════════════════╝</>');
+        $this->line('  <fg=cyan>┌────────────────────────────────────────────────┐</>');
+        $this->line('  <fg=cyan>│</>  <fg=white;options=bold>OpenClaw PM Agent</>                              <fg=cyan>│</>');
+        $this->line('  <fg=cyan>│</>  <fg=gray>Product management AI for every PM</>           <fg=cyan>│</>');
+        $this->line('  <fg=cyan>└────────────────────────────────────────────────┘</>');
         $this->newLine();
 
         // Show active agents
@@ -44,6 +44,7 @@ class Welcome extends Command
             ['./openclawpm provision <name>', 'Create a new PM Agent'],
             ['./openclawpm chat <name>', 'Start chatting'],
             ['./openclawpm verify <name>', 'Check agent health'],
+            ['./openclawpm update <name>', 'Update OpenClaw version'],
             ['./openclawpm destroy <name>', 'Remove an agent'],
         ];
 
