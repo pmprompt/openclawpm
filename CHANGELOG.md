@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **OpenClaw Version Management** - Full control over OpenClaw versions during provisioning and updates
+  - `OPENCLAW_VERSION` environment variable in `.env.example` (defaults to "latest")
+  - Version pinning support: "latest", "beta", or specific version like "2026.2.15"
+  - New `update` CLI command for updating OpenClaw on existing Sprites
+  - New `update_openclaw.sh` script for in-place version updates with channel/version options
+  - Enhanced `verify` command now displays installed OpenClaw version
+  - Updated `bootstrap_in_sprite.sh` and `provision_sprite.sh` to support version pinning
+  - Added version management documentation to README.md with examples
+
 ### Fixed
 
 - **Warmup now initializes OpenClaw agent** - Previous warmup only woke the VM (1.7s) but OpenClaw init happened on first chat (20s). Now warmup runs `openclaw agent --local` to pre-initialize sessions, skills, and model client, making first chat instant.

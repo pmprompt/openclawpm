@@ -128,6 +128,8 @@ register_cleanup "${TEMP_FILES[@]}"
 PM_SKILLS_REPO="$(b64_decode "${PM_SKILLS_REPO_B64:-}")"
 PM_SKILLS_REF="$(b64_decode "${PM_SKILLS_REF_B64:-}")"
 OPENCLAW_MODEL_PRIMARY="$(b64_decode "${OPENCLAW_MODEL_PRIMARY_B64:-}")"
+OPENCLAW_VERSION="$(b64_decode "${OPENCLAW_VERSION_B64:-}")"
+OPENCLAW_VERSION="${OPENCLAW_VERSION:-latest}"
 
 OPENAI_API_KEY="$(b64_decode "${OPENAI_API_KEY_B64:-}")"
 ANTHROPIC_API_KEY="$(b64_decode "${ANTHROPIC_API_KEY_B64:-}")"
@@ -136,8 +138,8 @@ OPENROUTER_API_KEY="$(b64_decode "${OPENROUTER_API_KEY_B64:-}")"
 export OPENAI_API_KEY ANTHROPIC_API_KEY OPENROUTER_API_KEY
 
 if ! command -v openclaw >/dev/null 2>&1; then
-    echo '[openclawpm] Installing OpenClaw (skip onboard)...'
-    download_with_retry "https://openclaw.ai/install.sh" 3 | bash -s -- --no-onboard
+    echo "[openclawpm] Installing OpenClaw version: ${OPENCLAW_VERSION} (skip onboard)..."
+    download_with_retry "https://openclaw.ai/install.sh" 3 | bash -s -- --no-onboard --version "${OPENCLAW_VERSION}"
 fi
 
 # Repair PATH for current shell (Sprites uses nvm; installer warns PATH may be missing it)

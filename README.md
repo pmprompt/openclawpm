@@ -83,6 +83,10 @@ OPENROUTER_API_KEY=sk-or-...
 
 # Optional: specify model (defaults to Claude Sonnet)
 OPENCLAW_MODEL_PRIMARY=sonnet
+
+# Optional: pin OpenClaw version (defaults to latest)
+# Use "latest", "beta", or a specific version like "2026.2.15"
+OPENCLAW_VERSION=latest
 ```
 
 **Important**: Never commit your `.env` file to git. It's already in `.gitignore`.
@@ -132,10 +136,56 @@ You'll enter an interactive chat session with your PM agent. Try asking:
 | `provision <name>` | Create and configure a new PM agent |
 | `chat <name>` | Interactive chat with your agent |
 | `verify <name>` | Verify agent health and configuration |
+| `update <name> [--channel] [--version]` | Update OpenClaw to a newer version |
 | `destroy <name> [--force]` | Remove a PM agent permanently |
 | `reset-sprite-auth [--force]` | Reset Sprites authentication |
 | `welcome` | Display the welcome screen |
 | `list` | Show all available commands |
+
+## Version Management
+
+### Pinning OpenClaw Version
+
+When provisioning a new agent, you can control which version of OpenClaw gets installed by setting `OPENCLAW_VERSION` in your `.env` file:
+
+```bash
+# Use the latest stable version (default)
+OPENCLAW_VERSION=latest
+
+# Use the beta channel for early access to features
+OPENCLAW_VERSION=beta
+
+# Pin to a specific version
+OPENCLAW_VERSION=2026.2.15
+```
+
+### Updating an Existing Agent
+
+To update OpenClaw on an existing Sprite:
+
+```bash
+# Update to latest version
+./openclawpm update my-pm-agent
+
+# Switch to beta channel
+./openclawpm update my-pm-agent --channel beta
+
+# Install a specific version
+./openclawpm update my-pm-agent --version 2026.2.15
+
+# Update without restarting the gateway
+./openclawpm update my-pm-agent --no-restart
+```
+
+### Checking Installed Version
+
+To see what version of OpenClaw is installed:
+
+```bash
+./openclawpm verify my-pm-agent
+```
+
+This will show the OpenClaw version along with other health checks.
 
 ## How It Works
 
