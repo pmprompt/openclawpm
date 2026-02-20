@@ -61,7 +61,10 @@ echo "[1/4] Checking OpenClaw is installed"
 repair_path
 
 command -v openclaw
+echo ""
+echo "📦 OpenClaw version:"
 openclaw --version
+echo ""
 
 echo "[2/4] Checking gateway health (best-effort; may fail on Sprites)"
 # Sprites doesn't provide systemd user services, so gateway service probing can fail.
